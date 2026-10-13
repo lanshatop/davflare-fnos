@@ -6,6 +6,20 @@
 
 ---
 
+## 下载与安装
+
+| 渠道 | 说明 |
+| --- | --- |
+| **安装包（推荐）** | 到 [Releases](https://github.com/lanshatop/davflare-fnos/releases/latest) 下载 `davflare-fnos-1.0.0.fpk`，在飞牛「应用中心 → 手动安装」中选择该文件 |
+| 源码自行构建 | 执行 `bash tools/build-fpk.sh`（需 `fnpack`），产物为 `davflare/davflare.fpk` |
+
+> **环境要求**：飞牛 fnOS `>= 1.1.3100`；依赖应用 `nodejs_v24`（应用中心会自动安装）；默认服务端口 `8087`。
+>
+> **覆盖安装**不影响数据目录中的网盘文件与品牌设置，可放心升级。
+> 安装失败时查看日志：`/var/apps/davflare/var/davflare.log`。
+
+---
+
 ## 一、功能清单（与上游一一对应）
 
 | 功能 | 上游实现 | fnOS 版实现 |
