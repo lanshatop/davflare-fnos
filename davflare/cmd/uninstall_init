@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# 卸载前：不做任何删除动作。
+# 删不删用户数据由卸载向导的 wizard_data_action 决定，在 uninstall_callback 里执行。
+#
+exit 0

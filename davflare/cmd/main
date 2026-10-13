@@ -1,0 +1,234 @@
+#!/bin/bash
+#
+# Davflare 生命周期脚本：start / stop / status
+#
+# 退出码契约（飞牛 fnOS）：
+#   start  -> 0 启动成功，1 启动失败
+#   stop   -> 0 停止成功，1 停止失败
+#   status -> 0 运行中，3 未运行
+#   其它参数 -> 1
+#
+set -uo pipefail
+
+DAVFLARE_HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1090
+. "${DAVFLARE_HERE}/_common.sh"
+
+# ---------------------------------------------------------------------------
+# 进程探测
+# ---------------------------------------------------------------------------
+
+# PID 文件里的 pid 是否确实是我们的服务进程。
+# 只做 kill -0 会在 PID 被复用后误判成「运行中」，因此再核对一次 cmdline。
+davflare_running_pid() {
+    [ -r "${DAVFLARE_PID_FILE}" ] || return 1
+    local pid
+    pid="$(head -n 1 "${DAVFLARE_PID_FILE}" 2>/dev/null | tr -d '[:space:]')"
+    case "${pid}" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    kill -0 "${pid}" 2>/dev/null || return 1
+    if [ -r "/proc/${pid}/cmdline" ]; then
+        if tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null | grep -q 'server\.cjs'; then
+            printf '%s' "${pid}"
+            return 0
+        fi
+        return 1
+    fi
+    printf '%s' "${pid}"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# 启动
+# ---------------------------------------------------------------------------
+
+davflare_load_runtime_env() {
+    if [ ! -r "${DAVFLARE_ENV_FILE}" ]; then
+        return 1
+    fi
+    # shellcheck disable=SC1090
+    set -a
+    . "${DAVFLARE_ENV_FILE}"
+    set +a
+
+    # 安装目录、元数据目录、临时目录在每次启动时按当前 TRIM_* 重新定位，
+    # 避免应用被迁移到别的存储空间后仍指向旧路径。
+    export DAVFLARE_HOST="0.0.0.0"
+    export DAVFLARE_META_DIR="${DAVFLARE_PKGVAR}/meta"
+    export DAVFLARE_TMP_DIR="${DAVFLARE_PKGVAR}/tmp"
+    export DAVFLARE_BUILD_DIR="${DAVFLARE_WWW_DIR}"
+    export HOME="${DAVFLARE_PKGHOME}"
+
+    # WebDAV 密码单独存放，避免 shell 引号转义问题。
+    if [ -r "${DAVFLARE_PASSWORD_FILE}" ]; then
+        export WEBDAV_PASSWORD="$(cat "${DAVFLARE_PASSWORD_FILE}")"
+    fi
+
+    case "${DAVFLARE_PORT:-}" in
+        ''|*[!0-9]*) export DAVFLARE_PORT="${DAVFLARE_DEFAULT_PORT}" ;;
+    esac
+    return 0
+}
+
+davflare_port_busy() {
+    local port="$1"
+    if command -v ss >/dev/null 2>&1; then
+        ss -ltn 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${port}\$" && return 0
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -ltn 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${port}\$" && return 0
+    fi
+    return 1
+}
+
+# 探测服务是否已经可以接受连接。返回 0 = 已就绪，1 = 超时，2 = 进程已退出。
+# /dev/tcp 不可用时（极少数精简 shell）退化为「进程存活即视为就绪」。
+davflare_wait_ready() {
+    local pid="$1" port="$2" waited=0 probe_ok=0
+
+    if (exec 3<>"/dev/tcp/127.0.0.1/${port}") 2>/dev/null; then
+        probe_ok=1
+    fi
+
+    while [ "${waited}" -lt 15 ]; do
+        kill -0 "${pid}" 2>/dev/null || return 2
+        if [ "${probe_ok}" = "1" ]; then
+            if (exec 3<>"/dev/tcp/127.0.0.1/${port}") 2>/dev/null; then
+                return 0
+            fi
+        else
+            # 无法探测端口：进程活着超过 3 秒即认为启动完成。
+            [ "${waited}" -ge 3 ] && return 0
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    if [ "${probe_ok}" = "1" ]; then
+        return 1
+    fi
+    return 0
+}
+
+davflare_start() {
+    local pid
+    if pid="$(davflare_running_pid)"; then
+        davflare_log "服务已在运行（PID ${pid}），跳过启动。"
+        return 0
+    fi
+    rm -f "${DAVFLARE_PID_FILE}" 2>/dev/null || true
+
+    if ! davflare_load_runtime_env; then
+        davflare_fail "找不到运行时配置 ${DAVFLARE_ENV_FILE}，请先在应用中心重新保存一次配置。"
+        return 1
+    fi
+
+    if [ ! -r "${DAVFLARE_SERVER_JS}" ]; then
+        davflare_fail "找不到服务端程序 ${DAVFLARE_SERVER_JS}，安装包可能不完整。"
+        return 1
+    fi
+
+    if [ ! -d "${DAVFLARE_WWW_DIR}" ]; then
+        davflare_fail "找不到前端资源目录 ${DAVFLARE_WWW_DIR}，安装包可能不完整。"
+        return 1
+    fi
+
+    local node
+    if ! node="$(davflare_find_node)"; then
+        davflare_fail "未找到 Node.js 运行时。本应用依赖应用中心提供的 nodejs_v24，请确认依赖已安装。"
+        return 1
+    fi
+
+    davflare_prepare_dirs
+    mkdir -p "${DAVFLARE_DATA_DIR}" 2>/dev/null || true
+
+    if davflare_port_busy "${DAVFLARE_PORT}"; then
+        davflare_fail "端口 ${DAVFLARE_PORT} 已被占用，请在应用设置中换一个端口后重试。"
+        return 1
+    fi
+
+    davflare_log "启动 Davflare：端口 ${DAVFLARE_PORT}，数据目录 ${DAVFLARE_DATA_DIR}，程序 ${node}"
+
+    cd "${DAVFLARE_APPDEST}" || {
+        davflare_fail "无法进入应用目录 ${DAVFLARE_APPDEST}。"
+        return 1
+    }
+
+    # node 自身输出（含运行期异常堆栈）落到应用变量目录，便于排查。
+    nohup "${node}" "${DAVFLARE_SERVER_JS}" >>"${DAVFLARE_LOG_FILE}" 2>&1 &
+    pid=$!
+    printf '%s' "${pid}" >"${DAVFLARE_PID_FILE}"
+
+    local rc=0
+    davflare_wait_ready "${pid}" "${DAVFLARE_PORT}" || rc=$?
+    if [ "${rc}" = "2" ]; then
+        rm -f "${DAVFLARE_PID_FILE}" 2>/dev/null || true
+        davflare_fail "Davflare 启动后立即退出，请查看日志 ${DAVFLARE_LOG_FILE}。"
+        return 1
+    fi
+    if [ "${rc}" = "1" ]; then
+        davflare_log "警告：等待端口 ${DAVFLARE_PORT} 就绪超时，但进程 ${pid} 仍在运行，继续交由应用中心轮询状态。"
+    fi
+
+    davflare_log "Davflare 已启动（PID ${pid}）。"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# 停止
+# ---------------------------------------------------------------------------
+
+davflare_stop() {
+    local pid
+    if ! pid="$(davflare_running_pid)"; then
+        rm -f "${DAVFLARE_PID_FILE}" 2>/dev/null || true
+        davflare_log "服务未在运行，无需停止。"
+        return 0
+    fi
+
+    davflare_log "正在停止 Davflare（PID ${pid}）…"
+    kill -TERM "${pid}" 2>/dev/null || true
+
+    local waited=0
+    while [ "${waited}" -lt 15 ]; do
+        kill -0 "${pid}" 2>/dev/null || break
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    if kill -0 "${pid}" 2>/dev/null; then
+        davflare_log "进程 ${pid} 在 15 秒内未退出，改用 SIGKILL。"
+        kill -KILL "${pid}" 2>/dev/null || true
+        sleep 1
+    fi
+
+    rm -f "${DAVFLARE_PID_FILE}" 2>/dev/null || true
+    davflare_log "Davflare 已停止。"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# 入口
+# ---------------------------------------------------------------------------
+
+case "${1:-}" in
+    start)
+        davflare_start || exit 1
+        exit 0
+        ;;
+    stop)
+        davflare_stop || exit 1
+        exit 0
+        ;;
+    status)
+        if davflare_running_pid >/dev/null; then
+            exit 0
+        fi
+        rm -f "${DAVFLARE_PID_FILE}" 2>/dev/null || true
+        exit 3
+        ;;
+    *)
+        davflare_log "用法：$0 {start|stop|status}"
+        exit 1
+        ;;
+esac

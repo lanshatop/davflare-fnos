@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# 安装前：fnOS 尚未生成 TRIM_* 环境变量目录，这里不做任何事。
+# 依赖声明（install_dep_apps = nodejs_v24）由 manifest 交给应用中心处理。
+#
+exit 0

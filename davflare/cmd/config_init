@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# 配置修改前：仅做参数校验，方便前端尽早提示错误。
+# 校验不通过时把原因写进 TRIM_TEMP_LOGFILE 并返回非零，让用户看到具体问题。
+#
+set -uo pipefail
+
+DAVFLARE_HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1090
+. "${DAVFLARE_HERE}/_common.sh"
+
+port="$(davflare_wizard wizard_port "")"
+if [ -n "${port}" ] && ! davflare_check_port "${port}"; then
+    davflare_fail "服务端口 ${port} 不合法，请填写 1-65535 之间的整数。"
+    exit 1
+fi
+
+days="$(davflare_wizard wizard_trash_days "")"
+if ! davflare_check_days "${days}"; then
+    davflare_fail "回收站保留天数 ${days} 不合法，请填写非负整数或留空。"
+    exit 1
+fi
+
+exit 0

@@ -1,0 +1,150 @@
+[
+  {
+    "stepTitle": "基础配置",
+    "items": [
+      {
+        "type": "text",
+        "field": "wizard_port",
+        "label": "服务端口",
+        "helpText": "Davflare 的 Web 界面、WebDAV、分享链接与 API 都监听这个端口。请避开已被 fnOS 或其它应用占用的端口。",
+        "initValue": "8087",
+        "rules": [
+          {
+            "required": true,
+            "message": "请输入服务端口"
+          },
+          {
+            "pattern": "^[0-9]+$",
+            "message": "端口号必须为正整数"
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "field": "wizard_data_dir",
+        "label": "数据目录",
+        "helpText": "Davflare 对外提供的全部文件都存放在这里，包含静态站点、图床图片与回收站。留空则使用应用共享目录（安装后可在飞牛文件管理器中看到，默认名为 davflare）。也可以填写一个已存在的 NAS 目录绝对路径，例如 /vol1/SSD，直接接管该目录下的文件。注意：卸载时选择「删除数据」只会清空应用自己的共享目录，指向用户已有目录时不会删除其中的文件。",
+        "initValue": ""
+      },
+      {
+        "type": "switch",
+        "field": "wizard_allow_iframe",
+        "label": "允许在飞牛桌面内嵌打开",
+        "helpText": "开启后点开桌面图标会在飞牛桌面的窗口内打开 Davflare；关闭后改为浏览器新标签页打开。建议保持开启。",
+        "initValue": "1"
+      }
+    ]
+  },
+  {
+    "stepTitle": "访问凭据",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "Davflare 的鉴权是「未配置即拒绝」。请在这里设置管理员账号与密码，用于 Web 界面登录、WebDAV 挂载、分享管理与应用设置。密码以明文保存在 /var/apps/davflare/var/conf/password（权限 600），仅本机 root 可读，不会写入访问日志。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_username",
+        "label": "管理员账号",
+        "initValue": "admin",
+        "rules": [
+          {
+            "required": true,
+            "message": "请输入管理员账号"
+          }
+        ]
+      },
+      {
+        "type": "password",
+        "field": "wizard_password",
+        "label": "管理员密码",
+        "helpText": "同时用于 WebDAV 挂载。建议使用 12 位以上、包含大小写字母与数字的密码；密码为空的账号无法访问任何受保护接口。",
+        "initValue": "",
+        "rules": [
+          {
+            "required": true,
+            "message": "请输入管理员密码"
+          },
+          {
+            "min": 6,
+            "message": "密码长度至少 6 位"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "stepTitle": "可选功能",
+    "items": [
+      {
+        "type": "switch",
+        "field": "wizard_public_read",
+        "label": "允许匿名只读访问",
+        "helpText": "开启后，未登录的访客可以浏览与下载文件，但不能上传、修改或删除。仅在纯文件分享场景下开启；内网之外使用时请谨慎。",
+        "initValue": "0"
+      },
+      {
+        "type": "switch",
+        "field": "wizard_public_dir_on",
+        "label": "启用匿名 WebDAV 目录",
+        "helpText": "总开关。只有本开关开启、且下面填了目录名时，该目录才允许匿名只读访问。安装后想临时停用（例如发现端口要映射到公网），在 应用中心 → Davflare → 设置 里关掉本开关即可，目录名会保留。",
+        "initValue": "1"
+      },
+      {
+        "type": "text",
+        "field": "wizard_public_dir",
+        "label": "匿名 WebDAV 目录（只读）",
+        "helpText": "填网盘根目录下已存在的文件夹名，例如 public 或 共享文件（不要带 /）。保存后只要上面的总开关是开启的，任何人无需账号密码即可通过 http://<NAS地址>:<端口>/webdav/public/ 浏览与下载该文件夹（浏览器目录页与 WebDAV 客户端挂载均可，只读，不能上传/修改/删除，也看不到其它目录）。留空则不启用。注意：该目录会成为全网盘唯一无需凭据即可读取的位置，请勿把私密文件放进去。",
+        "initValue": ""
+      },
+      {
+        "type": "text",
+        "field": "wizard_brand_name",
+        "label": "品牌名称",
+        "helpText": "登录页、顶栏、浏览器标签与所有分享/站点页面显示的应用名称，例如「家庭云盘」。留空使用默认名 Davflare。仅首次初始化数据目录时写入；安装后可随时在网盘「设置 → 品牌」里修改。",
+        "initValue": ""
+      },
+      {
+        "type": "text",
+        "field": "wizard_brand_logo",
+        "label": "品牌 Logo 图片路径",
+        "helpText": "填写 NAS 上已存在的图片文件绝对路径，例如 /vol1/1000/logo.png（支持 png/jpg/gif/webp/svg/ico，不超过 2MB）。设置后登录页、浏览器标签与全部页面的图标都会换成它。留空使用默认云朵图标。仅首次初始化数据目录时导入；之后可在网盘「设置 → 品牌」里直接上传新 Logo。",
+        "initValue": ""
+      },
+      {
+        "type": "text",
+        "field": "wizard_sites_host",
+        "label": "站点 / 图床域名",
+        "helpText": "发布后的站点页面在任意地址都能直接打开（例如 http://192.168.1.10:8087/<slug>/），无需登录、也不再依赖本项。本项只决定图床图片公开直链使用的主机名：只要主机名、不要 https://，例如 fnos.local；留空则图床接口返回的公开直链为空（图片本身不受影响）。",
+        "initValue": ""
+      },
+      {
+        "type": "text",
+        "field": "wizard_trash_days",
+        "label": "回收站保留天数",
+        "helpText": "删除的文件会先进入回收站，超过这个天数后自动清理。留空或填 0 表示不自动清理，需要手动在回收站里彻底删除。",
+        "initValue": "",
+        "rules": [
+          {
+            "pattern": "^[0-9]*$",
+            "message": "请填写非负整数，或留空表示不自动清理"
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "field": "wizard_frame_ancestors",
+        "label": "允许内嵌的来源",
+        "helpText": "仅在开启「允许在飞牛桌面内嵌打开」时生效，对应响应头 frame-ancestors。默认 * 表示允许任意来源内嵌；如果只在飞牛桌面里使用，可以收紧为飞牛 NAS 的访问地址，例如 http://192.168.1.10:5666。",
+        "initValue": "*"
+      },
+      {
+        "type": "switch",
+        "field": "wizard_log_requests",
+        "label": "记录访问日志",
+        "helpText": "开启后每一次请求都会写入 /var/apps/davflare/var/davflare.log，便于排查问题。文件操作频繁时会明显增大日志，建议只在排障期间临时开启。",
+        "initValue": "0"
+      }
+    ]
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "stepTitle": "卸载选项",
+    "items": [
+      {
+        "type": "radio",
+        "field": "wizard_data_action",
+        "label": "如何处理 Davflare 的数据",
+        "initValue": "keep",
+        "helpText": "选择删除数据后：若数据目录是应用自己的共享目录（默认 davflare），其中的全部文件、静态站点、图床图片与回收站都会被清空；若数据目录指向的是你自己的 NAS 目录（例如 /vol1/SSD），则只会删除 Davflare 自己创建的内部状态目录 _$flaredrive$，你本人的文件一律保留。",
+        "options": [
+          {
+            "label": "保留数据（推荐）",
+            "value": "keep"
+          },
+          {
+            "label": "删除数据",
+            "value": "delete"
+          }
+        ]
+      }
+    ]
+  }
+]

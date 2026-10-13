@@ -1,0 +1,22 @@
+{
+  "name": "davflare-fnos-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Davflare 的飞牛 fnOS 本地运行时：用文件系统实现 R2 桶 + 复刻 Cloudflare Pages Functions 运行时",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.8.11",
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260905.1",
+    "@types/node": "^20.14.9",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.3"
+  }
+}

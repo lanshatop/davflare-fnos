@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# 安装完成：这是 fnOS 唯一保证 TRIM_* 目录与向导环境变量都存在的阶段。
+#
+# 职责：
+#   1. 建出应用变量目录、元数据目录、临时目录
+#   2. 把安装向导收集到的字段固化成运行时配置（conf/davflare.env + conf/password）
+#
+# 这里不启动服务：拉起进程由应用中心随后调用 cmd/main start 完成。
+#
+set -uo pipefail
+
+DAVFLARE_HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1090
+. "${DAVFLARE_HERE}/_common.sh"
+
+davflare_prepare_dirs
+
+if ! davflare_write_config install; then
+    davflare_fail "写入初始配置失败，请检查 ${DAVFLARE_PKGVAR} 的写入权限。"
+    exit 1
+fi
+
+if [ "${DAVFLARE_HAS_PASSWORD}" != "1" ]; then
+    davflare_log "提示：安装向导未设置 WebDAV 密码，受保护接口在本机重配密码前会拒绝访问。"
+fi
+
+davflare_log "安装完成：数据目录 ${DAVFLARE_EFFECTIVE_DATA_DIR}，服务端口 ${DAVFLARE_EFFECTIVE_PORT}。"
+exit 0

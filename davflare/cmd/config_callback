@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+# 配置修改后：把设置页里的向导值写回运行时配置，并在服务原本处于运行状态时重启它。
+#
+# 留空语义：配置向导里留空的字段（尤其是密码）保留原值，避免只改一项就把其它配置清掉。
+#
+set -uo pipefail
+
+DAVFLARE_HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1090
+. "${DAVFLARE_HERE}/_common.sh"
+
+was_running=0
+if "${DAVFLARE_HERE}/main" status >/dev/null 2>&1; then
+    was_running=1
+fi
+
+if ! davflare_write_config config; then
+    davflare_fail "写入配置失败，请检查 ${DAVFLARE_CONF_DIR} 的写入权限。"
+    exit 1
+fi
+
+if [ "${was_running}" = "1" ]; then
+    "${DAVFLARE_HERE}/main" stop >/dev/null 2>&1 || true
+    if ! "${DAVFLARE_HERE}/main" start; then
+        davflare_fail "配置已保存，但服务重启失败，请查看 ${DAVFLARE_LOG_FILE}。"
+        exit 1
+    fi
+    davflare_log "配置已生效，服务已用新配置重启。"
+else
+    davflare_log "配置已保存（服务当前未运行）。"
+fi
+
+exit 0

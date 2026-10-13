@@ -1,0 +1,278 @@
+import { vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+import EmptyState from "../../EmptyState";
+import FileActionSheet from "../../FileActionSheet";
+import MultiSelectToolbar from "../../MultiSelectToolbar";
+import { setLang, strings, translate } from "../strings";
+import { FileItem } from "../types";
+
+beforeEach(() => {
+  setLang("zh");
+});
+
+describe("EmptyState", () => {
+  test("渲染标题与描述", () => {
+    render(<EmptyState title="这里没有文件" description="上传一个吧" />);
+    expect(screen.getByText("这里没有文件")).toBeInTheDocument();
+    expect(screen.getByText("上传一个吧")).toBeInTheDocument();
+  });
+
+  test("渲染四种 variant 与 actions", () => {
+    for (const variant of ["folder", "search", "trash", "shares"] as const) {
+      const { unmount } = render(
+        <EmptyState title="t" variant={variant} actions={<button>行动</button>} />
+      );
+      expect(screen.getByText("行动")).toBeInTheDocument();
+      unmount();
+    }
+  });
+});
+
+describe("MultiSelectToolbar", () => {
+  const props = {
+    selectedKeys: [] as string[],
+    onClose: vi.fn(),
+    onSelectAll: vi.fn(),
+    onDownload: vi.fn(),
+    onRename: vi.fn(),
+    onDelete: vi.fn(),
+    onShare: vi.fn(),
+    onCopy: vi.fn(),
+    onCut: vi.fn(),
+    onMove: vi.fn(),
+  };
+
+  test("多选时点击按钮触发回调", () => {
+    const p = { ...props, selectedKeys: ["a.txt", "b.txt"] };
+    render(<MultiSelectToolbar {...p} />);
+    fireEvent.click(screen.getByText(strings.copy));
+    fireEvent.click(screen.getByText(strings.cut));
+    fireEvent.click(screen.getByText(strings.move));
+    fireEvent.click(screen.getByText(strings.download));
+    fireEvent.click(screen.getByText(strings.delete));
+    fireEvent.click(screen.getByText(strings.close));
+    fireEvent.click(screen.getByText(translate("itemsSuffix", { count: 2 })));
+
+    expect(p.onCopy).toHaveBeenCalled();
+    expect(p.onCut).toHaveBeenCalled();
+    expect(p.onMove).toHaveBeenCalled();
+    expect(p.onDownload).toHaveBeenCalled();
+    expect(p.onDelete).toHaveBeenCalled();
+    expect(p.onClose).toHaveBeenCalled();
+    expect(p.onSelectAll).toHaveBeenCalled();
+  });
+
+  test("单个选中时重命名与分享可用，未选中时禁用", () => {
+    const { rerender } = render(<MultiSelectToolbar {...props} selectedKeys={[]} />);
+    expect(screen.getByText(strings.rename).closest("button")).toBeDisabled();
+    expect(screen.getByText(strings.share).closest("button")).toBeDisabled();
+
+    rerender(<MultiSelectToolbar {...props} selectedKeys={["a.txt"]} />);
+    expect(screen.getByText(strings.rename).closest("button")).not.toBeDisabled();
+    expect(screen.getByText(strings.share).closest("button")).not.toBeDisabled();
+  });
+
+  test("canPublish 控制发布按钮", () => {
+    const onPublish = vi.fn();
+    const { rerender } = render(
+      <MultiSelectToolbar
+        {...props}
+        selectedKeys={["dir"]}
+        onPublish={onPublish}
+        canPublish={false}
+      />
+    );
+    expect(screen.getByText(strings.publishAsSite).closest("button")).toBeDisabled();
+    rerender(
+      <MultiSelectToolbar
+        {...props}
+        selectedKeys={["dir"]}
+        onPublish={onPublish}
+        canPublish
+      />
+    );
+    fireEvent.click(screen.getByText(strings.publishAsSite));
+    expect(onPublish).toHaveBeenCalled();
+  });
+
+  test("canPublishAlbum 控制相册按钮，且紧跟静态站按钮", () => {
+    const onPublishAlbum = vi.fn();
+    const { rerender } = render(
+      <MultiSelectToolbar
+        {...props}
+        selectedKeys={["a.jpg"]}
+        onPublish={() => undefined}
+        onPublishAlbum={onPublishAlbum}
+        canPublishAlbum={false}
+      />
+    );
+    const site = screen.getByText(strings.publishAsSite).closest("button");
+    const album = screen.getByText(strings.publishAsAlbum).closest("button");
+    expect(album).toBeDisabled();
+    expect(site?.nextElementSibling).toBe(album);
+    rerender(
+      <MultiSelectToolbar
+        {...props}
+        selectedKeys={["a.jpg"]}
+        onPublish={() => undefined}
+        onPublishAlbum={onPublishAlbum}
+        canPublishAlbum
+      />
+    );
+    fireEvent.click(screen.getByText(strings.publishAsAlbum));
+    expect(onPublishAlbum).toHaveBeenCalled();
+  });
+
+  test("canPublishDocs 控制文档站按钮", () => {
+    const onPublishDocs = vi.fn();
+    const { rerender } = render(
+      <MultiSelectToolbar {...props} selectedKeys={["a.md"]} onPublishDocs={onPublishDocs} canPublishDocs={false} />
+    );
+    expect(screen.getByText(strings.publishAsDocs).closest("button")).toBeDisabled();
+    rerender(<MultiSelectToolbar {...props} selectedKeys={["a.md"]} onPublishDocs={onPublishDocs} canPublishDocs />);
+    fireEvent.click(screen.getByText(strings.publishAsDocs));
+    expect(onPublishDocs).toHaveBeenCalled();
+  });
+
+  test("发布为公开目录与静态站共用 canPublish，且紧跟静态站按钮", () => {
+    const onPublishDir = vi.fn();
+    const { rerender } = render(
+      <MultiSelectToolbar
+        {...props}
+        selectedKeys={["dir"]}
+        onPublish={() => undefined}
+        onPublishDir={onPublishDir}
+        canPublish={false}
+      />
+    );
+    const site = screen.getByText(strings.publishAsSite).closest("button");
+    const dir = screen.getByText(strings.publishAsDir).closest("button");
+    expect(dir).toBeDisabled();
+    expect(site?.nextElementSibling).toBe(dir);
+    rerender(
+      <MultiSelectToolbar
+        {...props}
+        selectedKeys={["dir"]}
+        onPublish={() => undefined}
+        onPublishDir={onPublishDir}
+        canPublish
+      />
+    );
+    fireEvent.click(screen.getByText(strings.publishAsDir));
+    expect(onPublishDir).toHaveBeenCalled();
+  });
+});
+
+describe("FileActionSheet", () => {
+  const file: FileItem = {
+    key: "a.txt",
+    name: "a.txt",
+    isDir: false,
+    size: 1,
+    uploaded: "",
+    contentType: "text/plain",
+  };
+
+  test("桌面端点击菜单项触发 onAction", async () => {
+    const onAction = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <FileActionSheet
+        file={file}
+        anchorPosition={{ top: 10, left: 20 }}
+        onClose={onClose}
+        onAction={onAction}
+      />
+    );
+    fireEvent.click(screen.getByText(strings.download));
+    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => expect(onAction).toHaveBeenCalledWith("download", file));
+  });
+
+  test("目录在 sitesEnabled 时显示发布为静态站", () => {
+    render(
+      <FileActionSheet
+        file={{ ...file, isDir: true, key: "d/", name: "d" }}
+        anchorPosition={{ top: 10, left: 20 }}
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+        sitesEnabled
+      />
+    );
+    expect(screen.getByText(strings.download)).toBeInTheDocument();
+    expect(screen.getByText(strings.open)).toBeInTheDocument();
+    expect(screen.getByText(strings.publishAsSite)).toBeInTheDocument();
+    expect(screen.getByText(strings.publishAsDir)).toBeInTheDocument();
+    expect(screen.getByText(strings.publishAsDocs)).toBeInTheDocument();
+  });
+
+  test(".md 文件显示发布为文档站，普通文件不显示", () => {
+    const { rerender } = render(
+      <FileActionSheet
+        file={{ ...file, key: "n/a.md", name: "a.md" }}
+        anchorPosition={{ top: 10, left: 20 }}
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+        sitesEnabled
+      />
+    );
+    expect(screen.getByText(strings.publishAsDocs)).toBeInTheDocument();
+    expect(screen.queryByText(strings.publishAsDir)).not.toBeInTheDocument();
+    rerender(
+      <FileActionSheet
+        file={file}
+        anchorPosition={{ top: 10, left: 20 }}
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+        sitesEnabled
+      />
+    );
+    expect(screen.queryByText(strings.publishAsDocs)).not.toBeInTheDocument();
+  });
+
+  test("文件或站点关闭时不显示发布为静态站", () => {
+    const { rerender } = render(
+      <FileActionSheet
+        file={file}
+        anchorPosition={{ top: 10, left: 20 }}
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+        sitesEnabled
+      />
+    );
+    expect(screen.queryByText(strings.publishAsSite)).not.toBeInTheDocument();
+    rerender(
+      <FileActionSheet
+        file={{ ...file, isDir: true, key: "d/", name: "d" }}
+        anchorPosition={{ top: 10, left: 20 }}
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+        sitesEnabled={false}
+      />
+    );
+    expect(screen.queryByText(strings.publishAsSite)).not.toBeInTheDocument();
+    expect(screen.queryByText(strings.publishAsDir)).not.toBeInTheDocument();
+  });
+
+  test("收集文件只对文件夹显示", async () => {
+    const onAction = vi.fn();
+    const dir = { ...file, isDir: true, key: "d", name: "d" };
+    const { rerender } = render(
+      <FileActionSheet file={file} anchorPosition={{ top: 10, left: 20 }} onClose={vi.fn()} onAction={onAction} />
+    );
+    expect(screen.queryByText(strings.collectFiles)).not.toBeInTheDocument();
+    rerender(
+      <FileActionSheet file={dir} anchorPosition={{ top: 10, left: 20 }} onClose={vi.fn()} onAction={onAction} />
+    );
+    fireEvent.click(screen.getByText(strings.collectFiles));
+    await waitFor(() => expect(onAction).toHaveBeenCalledWith("collect", dir));
+  });
+
+  test("file 为 null 时不渲染菜单项", () => {
+    render(
+      <FileActionSheet file={null} anchorPosition={null} onClose={vi.fn()} onAction={vi.fn()} />
+    );
+    expect(screen.queryByText(strings.download)).not.toBeInTheDocument();
+  });
+});

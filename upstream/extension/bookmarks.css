@@ -1,0 +1,2234 @@
+* {
+  box-sizing: border-box;
+}
+
+/* subtle themed scrollbars (library page scrolls sidebar + main) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+button {
+  appearance: none;
+  border: 0;
+  border-radius: 8px;
+  background: var(--orange);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--orange-dark);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+}
+
+button.ghost:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  border-color: var(--orange);
+}
+
+:root[data-theme="dark"] button.ghost {
+  color: var(--text);
+}
+
+button.danger {
+  background: var(--err);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 100vh;
+}
+
+/* ---------- sidebar ---------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 6px;
+}
+
+.brand img {
+  border-radius: 9px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.brand p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nav-item-gap);
+}
+
+.navTitle {
+  margin: var(--space-3) var(--space-2) var(--space-1);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding: var(--nav-item-pad-y) var(--nav-item-pad-x);
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+
+.navItem:hover {
+  background: var(--orange-soft);
+  color: var(--text);
+}
+
+.navItem.active {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 0 var(--orange);
+}
+
+.navItem .count {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 0 6px;
+  min-width: 22px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.navItem.active .count {
+  color: var(--orange-dark);
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+.navEmpty {
+  margin: 2px 10px;
+  color: var(--muted);
+}
+
+.sideFoot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.syncRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.75rem;
+  padding: 0 4px;
+}
+
+.syncLabel {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.syncInfo {
+  color: var(--muted);
+}
+
+.syncInfo.flash {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.addMain {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 0.875rem;
+}
+
+.footRow {
+  display: flex;
+  gap: 6px;
+}
+
+.moreWrap {
+  position: relative;
+  flex: 1;
+}
+
+#moreBtn {
+  width: 100%;
+  font-size: 0.8125rem;
+  padding: 6px 10px;
+}
+
+.quietRow {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.quietRow .quiet {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.quietRow .quiet:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.popMenu {
+  display: none;
+  position: absolute;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  z-index: 60;
+}
+
+.popMenu.open {
+  display: flex;
+}
+
+/* 上方放不下（首行卡片）时向下弹出：JS 打开时按实际空间加 .flip。
+   双类/ID 写法是为了压过 .cardMenuWrap .popMenu 与 #moreMenu 的 bottom 定位
+   （相同/更高特异性且声明在后，普通 .popMenu.flip 压不过它们）。 */
+.popMenu.popMenu.flip,
+.popMenu#moreMenu.flip {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+
+/* ⋯ 菜单从按钮上方弹出，.card 的 overflow:hidden 会把超出卡片顶部的部分裁掉；
+   打开菜单时放开裁剪并抬高该卡片层级，避免菜单被相邻卡片盖住。 */
+.card:has(.popMenu.open) {
+  overflow: visible;
+  z-index: 6;
+}
+
+#moreMenu {
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+}
+
+.popMenu .menuItem {
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.popMenu .menuItem:hover,
+.popMenu .menuItem:focus-visible {
+  background: var(--orange-soft);
+}
+
+/* 破坏性动作（删除）单独标红，与普通项区分 */
+.popMenu .menuItem.danger {
+  color: var(--err);
+}
+
+.popMenu .menuItem.danger:hover,
+.popMenu .menuItem.danger:focus-visible {
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .popMenu {
+    transform-origin: top right;
+  }
+
+  .popMenu.flip {
+    transform-origin: bottom right;
+  }
+
+  .popMenu.open {
+    animation: popIn var(--dur-fast) var(--ease-out);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- main ---------- */
+
+.main {
+  padding: var(--space-4) var(--space-5) 40px;
+  min-width: 0;
+}
+
+/* Topbar chrome: search | filters | actions — kept consistent across densities.
+   Round 4: sticky with a translucent frosted surface so filters stay reachable
+   while long lists scroll (solid --paper first as the color-mix fallback). */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.topbarSearch {
+  flex: 1 1 240px;
+  min-width: 180px;
+  max-width: 420px;
+}
+
+.topbarFilters,
+.topbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.topbarActions {
+  margin-left: auto;
+}
+
+.topbar input[type="search"],
+.topbar select,
+.topbar .viewToggle,
+.topbar #libRefresh,
+.topbar #themeToggle,
+.topbar .ghost {
+  height: var(--topbar-control-h);
+  font-size: 0.875rem;
+}
+
+.topbar input[type="search"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  font: inherit;
+  background: var(--paper-soft);
+  color: var(--text);
+}
+
+.topbar select {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  font: inherit;
+  background: var(--paper-soft);
+  color: var(--text);
+  max-width: 200px;
+}
+
+.topbar .viewToggle button {
+  height: calc(var(--topbar-control-h) - 2px);
+  padding: 0 12px;
+  font-size: 0.875rem;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.viewToggle {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--paper-soft);
+}
+
+.viewToggle button {
+  background: transparent;
+  color: var(--muted);
+  border-radius: 0;
+  padding: 7px 12px;
+}
+
+.viewToggle button.active {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+#themeToggle,
+#libRefresh {
+  background: var(--paper-soft);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+}
+
+#themeToggle:hover,
+#libRefresh:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.presetWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.presetWrap select {
+  max-width: 160px;
+}
+
+.presetWrap .ghost {
+  padding: 0 10px;
+  min-width: var(--topbar-control-h);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--orange-soft);
+  border: 1px solid var(--orange);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+
+.banner.hidden,
+.hidden {
+  display: none !important;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  margin: 64px auto 0;
+  max-width: 480px;
+  color: var(--muted);
+  padding: 0 16px;
+}
+
+.emptyState svg {
+  width: 88px;
+  height: 88px;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.emptyState h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.emptyState .emptyActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+/* ---------- cards（ham_home 式紧凑卡 + 瀑布流） ---------- */
+
+/* JS 按容器宽度分桶成 N 个 .masonryCol，列内卡片随内容自适应高度 */
+.cards {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.masonryCol {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.card.dragging {
+  opacity: 0.45;
+}
+
+.cardMain {
+  display: block;
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cardHead .favicon {
+  margin-bottom: 0;
+  flex: none;
+  width: var(--favicon-md);
+  height: var(--favicon-md);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+}
+
+.cardHead .favicon img {
+  width: 18px;
+  height: 18px;
+}
+
+.cardHead h3 {
+  margin: 1px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 快照徽章：与 hover 操作条同层，避免与标题互抢空间 */
+.card .snapFloat {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+.chip.snap {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
+.cardMain .domain {
+  margin: 4px 0 0;
+  padding-left: 38px;
+  color: var(--muted);
+  font-size: 0.78125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMain .note {
+  margin: var(--space-2) 0 0;
+  padding-left: 38px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.favicon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  margin-bottom: 8px;
+}
+
+.favicon img {
+  display: none;
+  border-radius: 4px;
+}
+
+.favicon.hasIcon img {
+  display: block;
+}
+
+.favicon.hasIcon .letter {
+  display: none;
+}
+
+.cardMain h3 {
+  margin: 0 var(--space-4) 4px;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardMain .domain {
+  margin: 0 var(--space-4);
+  color: var(--muted);
+  font-size: 0.78125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMain .note {
+  margin: var(--space-2) var(--space-4) 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardMeta {
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 12px;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.chip {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  border-radius: 999px;
+  padding: 1px 7px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip.tag {
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.cardMeta time {
+  margin-left: auto;
+}
+
+/* 分类/标签行：独立于 meta,可换行不挤压；与标题左缘对齐 */
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 var(--space-4) 0 38px;
+  margin-bottom: var(--space-2);
+}
+
+.cardTags .chip {
+  flex: none;
+  max-width: 160px;
+}
+
+.cardMeta .chip,
+.cardMeta time,
+.cardMeta .cardMenuWrap {
+  flex: none;
+}
+
+.cardMenuWrap {
+  position: relative;
+  flex: none;
+  margin-left: 4px;
+}
+
+.cardMore {
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 8px;
+  font-size: 0.9375rem;
+  line-height: 1;
+  border-radius: 6px;
+}
+
+.cardMore:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+/* 菜单展开期间按钮保持激活态，让「谁在弹出」一目了然 */
+.cardMore[aria-expanded="true"] {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.cardMenuWrap .popMenu {
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 128px;
+}
+
+.cardMeta .del,
+.row .del {
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  visibility: hidden;
+}
+
+.card:hover .del,
+.row:hover .del {
+  visibility: visible;
+}
+
+.cardMeta .del:hover,
+.row .del:hover {
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+/* hover 快捷操作条：浮在卡片右上，回应悬停/键盘聚焦 */
+.cardActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.card:hover .cardActions,
+.card:focus-within .cardActions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.cardAct {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1;
+  box-shadow: var(--shadow);
+}
+
+.cardAct:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.cardAct.pin[aria-pressed="true"] {
+  color: var(--orange);
+}
+
+.cardAct.del:hover {
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+/* ---------- first-load skeleton ---------- */
+
+.card.skel,
+.row.skel {
+  pointer-events: none;
+}
+
+.card.skel {
+  border: 1px solid var(--line);
+  min-height: 148px;
+}
+
+.skelDot {
+  width: var(--favicon-md);
+  height: var(--favicon-md);
+  border-radius: 8px;
+  flex: none;
+  margin: 0 0 8px;
+}
+
+.skelLine {
+  height: 12px;
+  border-radius: 6px;
+  margin: 0 var(--space-4) 8px;
+}
+
+.skelLine.w70 {
+  width: 70%;
+}
+
+.skelLine.w45 {
+  width: 45%;
+}
+
+.skelDot,
+.skelLine {
+  background: linear-gradient(
+    100deg,
+    var(--paper-soft) 40%,
+    var(--paper-elevated) 50%,
+    var(--paper-soft) 60%
+  );
+  background-size: 200% 100%;
+  animation: skelShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skelShimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+/* ---------- rows ---------- */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: inherit;
+  text-decoration: none;
+  transition: transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+/* Round 4: rows lift like cards (smaller amplitude — the list stays calm). */
+.row:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.row.dragging {
+  opacity: 0.45;
+}
+
+.rowNote {
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.row .favicon {
+  margin-bottom: 0;
+  flex: none;
+}
+
+.rowTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 34%;
+  min-width: 0;
+}
+
+.rowDomain {
+  color: var(--muted);
+  font-size: 0.78125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.rowChips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  max-width: 32%;
+  overflow: hidden;
+}
+
+.row .chip {
+  flex: none;
+}
+
+.row time {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex: none;
+}
+
+/* ---------- dialogs ---------- */
+
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--text);
+  padding: 22px;
+  width: min(420px, 92vw);
+  box-shadow: var(--shadow-lg);
+}
+
+dialog::backdrop {
+  background: var(--overlay);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  dialog[open] {
+    animation: dialogIn var(--dur-base) var(--ease-out);
+  }
+
+  dialog[open]::backdrop {
+    animation: fadeIn var(--dur-base) ease-out;
+  }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+dialog h2 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+
+dialog label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  margin: 10px 0 4px;
+}
+
+dialog input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+}
+
+dialog menu {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0;
+  margin: 18px 0 0;
+}
+
+.status {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  min-height: 1.2em;
+}
+
+.status.err {
+  color: var(--err);
+}
+
+/* ---------- view switch & shared bits ---------- */
+
+/* 竖排两字堆叠在中文下过挤：改为与主导航一致的整行列表（HamHome 式侧栏） */
+.viewSwitch {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.viewSwitch .navItem {
+  justify-content: flex-start;
+  padding: 7px var(--nav-item-pad-x);
+  font-size: 0.8125rem;
+  border-radius: 8px;
+}
+
+.viewSwitch .navItem.active {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 0 var(--orange);
+}
+
+.checkLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.checkLabel input {
+  accent-color: var(--orange);
+}
+
+.topHint {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.dialogSubtitle {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+dialog textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+
+.ruleGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 80px;
+  gap: 10px;
+}
+
+.ruleGrid label {
+  margin-top: 10px;
+}
+
+#snapSection {
+  margin-top: 16px;
+}
+
+#snapSection legend {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  padding: 0;
+}
+
+.snapActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.snapActions button {
+  font-size: 0.8125rem;
+  padding: 5px 12px;
+}
+
+.snapActions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* import / export dialog sections (issue #65) */
+.dlgSection {
+  margin-top: 16px;
+  border: none;
+  padding: 0;
+}
+
+.dlgSection legend {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  padding: 0;
+}
+
+/* ---------- drive view (embedded instance) ---------- */
+
+#viewDrive {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 36px);
+}
+
+#viewDrive .topbar {
+  flex: none;
+}
+
+.driveFrame {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  /* 承载 React 挂载点(#driveRoot),内容裁进圆角,与原 iframe 行为一致 */
+  overflow: hidden;
+}
+
+/* ---------- workspaces ---------- */
+
+.wsList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wsCard {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+.wsHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wsHead h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.wsMeta {
+  color: var(--muted);
+  font-size: 0.78125rem;
+}
+
+.wsHead .del {
+  margin-left: auto;
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.wsHead .del:hover {
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+.wsActions {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.wsActions button {
+  font-size: 0.8125rem;
+  padding: 5px 12px;
+}
+
+.wsPages {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.pageRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.84375rem;
+  cursor: pointer;
+}
+
+.pageRow:last-child {
+  border-bottom: 0;
+}
+
+.pageRow input {
+  accent-color: var(--orange);
+  flex: none;
+}
+
+.pageRowTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ---------- tab rules ---------- */
+
+.ruleRow .del,
+.ruleRow .edit,
+.cardMeta .edit,
+.row .edit {
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+}
+
+.ruleRow .edit:hover,
+.cardMeta .edit:hover,
+.row .edit:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.colorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--muted);
+}
+
+.colorDot.grey { background: #9aa0a6; }
+.colorDot.blue { background: #4c8bf5; }
+.colorDot.red { background: #e2543e; }
+.colorDot.yellow { background: #f0b429; }
+.colorDot.green { background: #34a853; }
+.colorDot.pink { background: #ef6c9e; }
+.colorDot.purple { background: #9a5ff0; }
+.colorDot.cyan { background: #26b8c2; }
+.colorDot.orange { background: #f38020; }
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+/* ---------- settings (in-shell options) ---------- */
+
+#viewSettings .settingsCard {
+  max-width: 560px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px 20px;
+  box-shadow: var(--shadow);
+}
+
+#viewSettings label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin: 16px 0 6px;
+}
+
+#viewSettings input[type="url"],
+#viewSettings input[type="text"],
+#viewSettings input[type="password"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  color: var(--text);
+  background: var(--paper-soft);
+}
+
+#viewSettings input:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+#viewSettings .settingsSection {
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+#viewSettings .settingsSection legend {
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0;
+}
+
+#viewSettings .radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  font-size: 0.875rem;
+  margin: 10px 0 0;
+  cursor: pointer;
+}
+
+#viewSettings .radio input {
+  accent-color: var(--orange);
+}
+
+#viewSettings .hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+#viewSettings .settingsActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+#viewSettings #settingsStatus {
+  margin: 0;
+}
+
+/* ---------- multi-select & batch bar (issue #63) ---------- */
+
+.batchBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--orange-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  font-size: 0.8125rem;
+}
+
+.batchCount {
+  font-weight: 600;
+  color: var(--orange-dark);
+  padding: 0 4px;
+}
+
+.card .pick,
+.row .pick {
+  accent-color: var(--orange);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.cardMeta .pick {
+  flex: none;
+}
+
+.row .pick {
+  flex: none;
+}
+
+.card.sel {
+  border-color: var(--orange);
+  box-shadow: inset 0 0 0 1px var(--orange);
+}
+
+.row.sel {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+}
+
+.chip.pin {
+  background: transparent;
+  border: 1px solid var(--line);
+  max-width: none;
+}
+
+.rowLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 34%;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.rowLink .rowMain {
+  flex: 1 1 auto;
+}
+
+.row .pin {
+  background: transparent;
+  color: var(--muted);
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  visibility: hidden;
+}
+
+.row:hover .pin,
+.row .pin[aria-pressed="true"] {
+  visibility: visible;
+}
+
+.row .pin:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+/* ---------- sidebar folder rows (issue #63) ---------- */
+
+.navTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navTitleRow .navAdd {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.navTitleRow .navAdd:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.navItemWrap {
+  position: relative;
+}
+
+.navItemWrap .navItem {
+  padding-right: 28px;
+}
+
+.navFolderMore {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 6px;
+  visibility: hidden;
+  cursor: pointer;
+}
+
+.navItemWrap:hover .navFolderMore,
+.navFolderMore[aria-expanded="true"] {
+  visibility: visible;
+}
+
+.navFolderMore:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.navItemWrap .popMenu {
+  right: 8px;
+  top: calc(100% - 4px);
+  bottom: auto;
+  min-width: 140px;
+}
+
+/* 拖拽书签到文件夹：悬停高亮放置目标 */
+.navItemWrap.dragOver {
+  background: var(--orange-soft);
+  outline: 2px solid var(--orange);
+  outline-offset: -1px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- tag cloud (HamHome 式) ---------- */
+
+.tagCloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 var(--space-1);
+}
+
+.tagCloudItem {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  max-width: 100%;
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.tagCloudItem:hover {
+  border-color: var(--orange);
+}
+
+.tagCloudItem.active {
+  background: var(--orange-soft);
+  border-color: var(--orange);
+}
+
+.tagCloud .tagChip {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+  line-height: 1.5;
+  padding: 2px 9px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagCloud .tagChip:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.tagCloudItem.active .tagChip {
+  color: var(--orange-dark);
+  font-weight: 600;
+}
+
+.tagChip.tier0 {
+  font-size: 0.71875rem;
+}
+
+.tagChip.tier1 {
+  font-size: 0.8125rem;
+  color: var(--text);
+}
+
+.tagChip.tier2 {
+  font-size: 0.9375rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* 收藏星标在云胶囊内改为内联，跟随悬停出现 */
+.tagCloudItem .navTagStar {
+  position: static;
+  transform: none;
+  visibility: hidden;
+  font-size: 0.7rem;
+  padding: 0 7px 0 0;
+  color: var(--muted);
+}
+
+.tagCloudItem:hover .navTagStar,
+.tagCloudItem:focus-within .navTagStar,
+.tagCloudItem .navTagStar[aria-pressed="true"],
+.tagCloudItem .navTagStar:focus-visible {
+  visibility: visible;
+}
+
+.tagCloudItem .navTagStar[aria-pressed="true"] {
+  color: var(--orange);
+}
+
+.tagCloudItem .navTagStar:hover {
+  background: transparent;
+  color: var(--orange-dark);
+}
+
+/* ---------- filter presets (issue #63 P2) ---------- */
+
+.presetWrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.presetWrap select {
+  max-width: 170px;
+}
+
+.presetWrap .ghost {
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+/* ---------- phase 2: workspace / snapshot / preset / conflict polish ---------- */
+
+.wsCard.isRestoring {
+  outline: 2px solid var(--orange);
+  outline-offset: 1px;
+}
+
+.wsSelectBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+  flex-wrap: wrap;
+}
+
+.wsSelectBar .ghost {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+}
+
+.wsSelectedHint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.pageRow .favicon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.pageRow .favicon img {
+  width: 18px;
+  height: 18px;
+}
+
+.chip.snap {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
+.presetWrap.isActive {
+  box-shadow: 0 0 0 1px var(--orange);
+  border-radius: 8px;
+}
+
+.presetWrap.isActive select {
+  font-weight: 600;
+}
+
+.batchBar .batchPinPrimary {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+}
+
+.conflictList {
+  list-style: none;
+  margin: 8px 0 12px;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.conflictList li {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.8125rem;
+}
+
+.conflictList li:last-child {
+  border-bottom: 0;
+}
+
+.conflictList .conflictUrl {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conflictList .conflictTitles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+#exportChromeConflictNote {
+  margin: 0 0 8px;
+}
+
+
+/* ---------- phase 3: sidebar favorites ---------- */
+
+.favoritesNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.favoritesNav .navEmptyFav {
+  margin: 0;
+  padding: 4px 10px 8px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.favItemWrap {
+  position: relative;
+}
+
+.favItemWrap .navItem {
+  padding-right: 28px;
+  /* kind 前缀与名称同行排列；favorites 无计数徽章，禁用两端分布 */
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.favItemWrap .navItem .favKind {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.favRemove {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 6px;
+  visibility: hidden;
+  cursor: pointer;
+}
+
+.favItemWrap:hover .favRemove,
+.favRemove:focus-visible {
+  visibility: visible;
+}
+
+.favRemove:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.navFolderStar,
+.navTagStar {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  visibility: hidden;
+  cursor: pointer;
+}
+
+.navItemWrap:hover .navFolderStar,
+.navItemWrap:hover .navTagStar,
+.navFolderStar[aria-pressed="true"],
+.navTagStar[aria-pressed="true"] {
+  visibility: visible;
+}
+
+.navFolderStar[aria-pressed="true"],
+.navTagStar[aria-pressed="true"] {
+  color: var(--orange);
+}
+
+.navFolderStar:hover,
+.navTagStar:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.navItemWrap.hasStar .navItem {
+  padding-right: 52px;
+}
+
+/* ---------- phase 3: storage visibility ---------- */
+
+.storageList {
+  margin: 8px 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.storageList > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.875rem;
+}
+
+.storageList dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.storageList dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* unset keyboard shortcut (settings shortcuts row) */
+.storageList dd.shortcutMissing {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.storageList .storageTotal {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-strong);
+  font-weight: 600;
+}
+
+.storageList .storageTotal dt,
+.storageList .storageTotal dd {
+  color: var(--text);
+}
+
+#storageSection .ghost {
+  margin-top: 4px;
+}
+
+/* ---------- undo delete toast（底部居中，6 秒自动消失） ---------- */
+
+.undoToast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  z-index: 90;
+  max-width: min(92vw, 480px);
+}
+
+.undoToast span {
+  font-size: 0.8125rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.undoToast .ghost {
+  flex: none;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .undoToast:not(.hidden) {
+    animation: toastIn var(--dur-base) var(--ease-out);
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- move-to-folder dialog ---------- */
+
+.moveList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 8px 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px;
+  background: var(--paper-soft);
+}
+
+.moveItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.moveItem:hover,
+.moveItem:focus-visible {
+  background: var(--orange-soft);
+}
+
+.moveItem.current {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+}
+
+.moveItem .count {
+  flex: none;
+  font-size: 0.6875rem;
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+/* ---------- phase 3: sidebar folder tree（ham_home 式分类树） ---------- */
+
+.navTreeItem {
+  position: relative;
+}
+
+/* 缩进参考线：子层级左侧细线，提示树形归属 */
+.navTreeItem[data-depth]::before {
+  content: "";
+  position: absolute;
+  left: calc(-7px);
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--line);
+  display: none;
+}
+
+.navTreeItem[data-depth="1"]::before,
+.navTreeItem[data-depth="2"]::before,
+.navTreeItem[data-depth="3"]::before {
+  display: block;
+}
+
+.navItem .navChevron {
+  flex: none;
+  width: 14px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navItem .navChevron.open {
+  transform: rotate(90deg);
+}
+
+.navItem .navLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- trash & duplicates views ---------- */
+
+.trashRow .edit,
+.trashRow .del {
+  visibility: visible;
+  font-size: 0.8125rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.trashWhen {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex: none;
+}
+
+.dupGroups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dupGroup {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.dupGroupHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-soft);
+}
+
+.dupGroupHead h3 {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.dupGroupHost {
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dupRows {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+}
+
+.dupRow {
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+}
+
+.dupRow:hover {
+  background: var(--orange-faint);
+}
+
+.dupRow time {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex: none;
+}
+
+.dupActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.dupActions button {
+  font-size: 0.8125rem;
+  padding: 6px 12px;
+}
+
+/* ---------- theme switch：View Transitions 圆形扩散（不支持则瞬切） ---------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

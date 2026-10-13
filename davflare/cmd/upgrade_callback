@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# 升级后：补齐新版本需要的目录，并用「保留旧值」的方式重新落一次配置。
+#
+# 关键约定：
+#   * 升级不改动用户数据目录里的任何业务文件。
+#   * 新增的配置项用默认值补齐；用户已改过的值继续保留（向导留空即保留）。
+#   * 密码文件存在时不覆盖。
+#
+set -uo pipefail
+
+DAVFLARE_HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1090
+. "${DAVFLARE_HERE}/_common.sh"
+
+davflare_prepare_dirs
+
+was_running=0
+if "${DAVFLARE_HERE}/main" status >/dev/null 2>&1; then
+    was_running=1
+fi
+
+if ! davflare_write_config config; then
+    davflare_fail "升级后写入配置失败，请检查 ${DAVFLARE_CONF_DIR} 的写入权限。"
+    exit 1
+fi
+
+if [ "${was_running}" = "1" ]; then
+    "${DAVFLARE_HERE}/main" stop >/dev/null 2>&1 || true
+    if ! "${DAVFLARE_HERE}/main" start; then
+        davflare_fail "升级已完成，但服务重启失败，请查看 ${DAVFLARE_LOG_FILE}。"
+        exit 1
+    fi
+fi
+
+davflare_log "升级完成：版本 ${TRIM_OLD_APPVER:-unknown} → ${TRIM_APPVER:-unknown}，用户数据保持不变。"
+exit 0

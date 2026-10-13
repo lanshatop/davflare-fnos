@@ -1,0 +1,96 @@
+import { getLang, dictionary, setLang, subscribeLang, translate } from "../strings";
+
+describe("strings / translate", () => {
+  afterEach(() => {
+    localStorage.clear();
+    setLang("zh");
+  });
+
+  test("字典完整性：每个 key 的 zh 与 en 都非空", () => {
+    const keys = Object.keys(dictionary);
+    expect(keys.length).toBeGreaterThan(100);
+    const missing: string[] = [];
+    for (const key of keys) {
+      const entry = dictionary[key];
+      if (!entry?.zh?.trim() || !entry?.en?.trim()) missing.push(key);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  test("translate 按当前语言取值", () => {
+    setLang("zh");
+    expect(translate("upload")).toBe("上传");
+    setLang("en");
+    expect(translate("upload")).toBe("Upload");
+  });
+
+  test("translate 支持 {param} 插值", () => {
+    setLang("zh");
+    expect(
+      translate("listingStats", { folders: 2, files: 5, size: "1 KB" })
+    ).toBe("2 个文件夹 · 5 个文件 · 共 1 KB");
+    setLang("en");
+    expect(
+      translate("listingStats", { folders: 2, files: 5, size: "1 KB" })
+    ).toBe("2 folder(s) · 5 file(s) · 1 KB");
+  });
+
+  test("translate 缺失参数时保留占位符", () => {
+    expect(translate("minutesAgo")).toBe("{m} 分钟前");
+  });
+
+  test("translate 未知 key 原样返回（开发期暴露拼写错误）", () => {
+    expect(translate("no.such.key")).toBe("no.such.key");
+  });
+
+  test("setLang 持久化到 localStorage", () => {
+    setLang("en");
+    expect(localStorage.getItem("flaredrive.lang")).toBe("en");
+    expect(getLang()).toBe("en");
+  });
+
+  test("validForever 文案存在中英翻译", () => {
+    setLang("zh");
+    expect(translate("validForever")).toBe("永久有效");
+    setLang("en");
+    expect(translate("validForever")).toBe("Never expires");
+  });
+
+  test("MCP copy states API Key 404 dependency", () => {
+    for (const lang of ["zh", "en"] as const) {
+      const mcp = dictionary.mcpRequiresApiKey[lang];
+      const mcpHint = dictionary.flagMcpHint[lang];
+      const keyHint = dictionary.flagApiKeyHint[lang];
+      expect(mcp).toMatch(/API Key/i);
+      expect(mcp).toMatch(/404/);
+      expect(mcpHint).toMatch(/404/);
+      expect(keyHint).toMatch(/404/);
+    }
+  });
+
+  test("sites host hints point NAS users to the app-center setting with an example", () => {
+    for (const lang of ["zh", "en"] as const) {
+      for (const key of ["sitesHostMissingHint", "imagesHostMissingHint"] as const) {
+        const hint = dictionary[key][lang];
+        // 飞牛自托管版：不再提 Pages / 重新部署，改为应用中心设置路径 + 主机名示例
+        expect(hint).not.toMatch(/Pages/);
+        expect(hint).not.toMatch(/redeploy/i);
+        expect(hint).toMatch(lang === "zh" ? /应用中心/ : /[Aa]pp [Cc]enter/);
+        expect(hint).toMatch(/fnos\.local/);
+        expect(hint).toMatch(/https?:\/\//);
+      }
+      expect(dictionary.sitesHostMissing[lang]).toMatch(lang === "zh" ? /打不开/ : /will not open/);
+      expect(dictionary.imagesHostMissing[lang]).toMatch(lang === "zh" ? /打不开/ : /will not open/);
+    }
+  });
+
+  test("setLang 通知订阅者", () => {
+    const seen: string[] = [];
+    const unsubscribe = subscribeLang(() => seen.push(getLang()));
+    setLang("en");
+    setLang("zh");
+    unsubscribe();
+    setLang("en");
+    expect(seen).toEqual(["en", "zh"]);
+  });
+});

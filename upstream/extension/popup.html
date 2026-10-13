@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Davflare</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="popup.css" />
+    <script>
+      (function () {
+        try {
+          var k = "davflare-theme";
+          var t = localStorage.getItem(k);
+          if (t !== "light" && t !== "dark") {
+            t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+          document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <header class="popHead">
+      <img id="pageIcon" class="pageIcon" alt="" hidden />
+      <img src="icons/icon48.png" id="brandIcon" class="pageIcon fallback" alt="" hidden />
+      <div class="pageMeta">
+        <h1 id="pageTitle">Davflare</h1>
+        <p id="pageUrl"></p>
+      </div>
+    </header>
+
+    <p id="bodyNotice" class="bodyNotice hidden"></p>
+    <button id="noticeBtn" class="ghost noticeBtn hidden" type="button"></button>
+
+    <form id="saveForm" class="hidden" novalidate>
+      <label for="saveTitle" id="titleLabel">Title</label>
+      <input id="saveTitle" type="text" spellcheck="false" />
+
+      <label for="saveFolder" id="folderLabel">Folder</label>
+      <input id="saveFolder" type="text" list="folderOptions" spellcheck="false" />
+      <datalist id="folderOptions"></datalist>
+
+      <label for="saveTags" id="tagsLabel">Tags (comma separated)</label>
+      <input id="saveTags" type="text" spellcheck="false" />
+
+      <label for="saveNote" id="noteLabel">Note</label>
+      <textarea id="saveNote" rows="2" spellcheck="false"></textarea>
+
+      <p id="saveStatus" class="status" role="status"></p>
+      <button id="saveBtn" class="primary saveBtn" type="submit">Save</button>
+      <button id="viewBtn" class="ghost noticeBtn hidden" type="button">View in library</button>
+    </form>
+
+    <section id="edgeSection" class="edgeSection hidden">
+      <div class="edgeHead">
+        <span id="edgeTitle" class="edgeTitle"></span>
+        <span id="edgeState" class="edgeState"></span>
+      </div>
+      <p id="edgeDesc" class="edgeDesc"></p>
+      <button id="edgeToggleBtn" class="ghost edgeBtn hidden" type="button"></button>
+      <p class="edgeShortcutRow">
+        <span id="edgeShortcut" class="edgeShortcut"></span>
+        <button id="edgeShortcutSet" class="linkBtn hidden" type="button"></button>
+      </p>
+    </section>
+
+    <footer class="popFoot">
+      <button id="homeBtn" class="ghost footBtn" type="button">Open Davflare</button>
+      <button id="settingsBtn" class="ghost footBtn" type="button">Settings</button>
+    </footer>
+    <p id="shortcutHint" class="shortcutHint" role="note"></p>
+
+    <script src="url.js"></script>
+    <script src="bookmarks.js"></script>
+    <script src="dav.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

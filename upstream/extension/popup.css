@@ -1,0 +1,303 @@
+/* Action popup — shares tokens.css with the library shell. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 360px;
+  margin: 0;
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--paper);
+  color: var(--text);
+  border-radius: 0;
+}
+
+button {
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--orange);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--orange-dark);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--orange-dark);
+  border: 1px solid var(--orange);
+}
+
+button.ghost:hover {
+  background: var(--orange-soft);
+}
+
+/* ---------- page header ---------- */
+
+.popHead {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.pageIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  flex: none;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
+
+.pageIcon.fallback {
+  object-fit: contain;
+  padding: 5px;
+}
+
+.pageMeta {
+  min-width: 0;
+}
+
+.pageMeta h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pageMeta p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- notice states (loading / restricted / unconfigured / error) ---------- */
+
+.bodyNotice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.noticeBtn {
+  align-self: stretch;
+}
+
+/* ---------- save form ---------- */
+
+#saveForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#saveForm.hidden,
+.bodyNotice.hidden,
+.noticeBtn.hidden,
+.hidden {
+  display: none;
+}
+
+#saveForm label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+#saveForm input,
+#saveForm textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
+  color: var(--text);
+  font: inherit;
+  padding: 7px 10px;
+}
+
+#saveForm textarea {
+  resize: vertical;
+  min-height: 3.2em;
+}
+
+.saveBtn {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.status {
+  margin: 0;
+  min-height: 1.5em;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.err {
+  color: var(--err);
+}
+
+/* ---------- footer entries into the shell home ---------- */
+
+.popFoot {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.footBtn {
+  flex: 1;
+  font-weight: 600;
+}
+
+/* ---------- in-page edge panel toggle (round 4) ---------- */
+
+.edgeSection {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edgeSection.hidden {
+  display: none;
+}
+
+.edgeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.edgeTitle {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edgeState {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+}
+
+.edgeState.on {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.edgeDesc {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.edgeBtn {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* panel shortcut row (#137): 「未设置」 + a link to chrome://extensions/shortcuts */
+
+.edgeShortcutRow {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.edgeShortcutRow .hidden {
+  display: none;
+}
+
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--orange-dark);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* configurable shortcut foot note (round 4) */
+
+.shortcutHint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.shortcutHint:empty {
+  display: none;
+}
+
+/* subtle themed scrollbars (popup mirrors the library shell) */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 5px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: content-box;
+}

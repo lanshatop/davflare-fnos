@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# 升级前：不做任何破坏性操作。
+# 用户数据（数据目录、conf/、meta/）必须原样保留，交给升级后的 upgrade_callback 复用。
+#
+exit 0

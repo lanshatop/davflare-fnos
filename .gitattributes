@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────
+# 换行符与二进制处理
+#
+# 仓库内文本文件一律存为 LF。原因：本项目的 fnOS 包脚本（davflare/cmd/*、
+# davflare/wizard/*，无扩展名）实际运行在 NAS 的 Linux 上，一旦被检出成
+# CRLF 就会执行失败。Windows 上 core.autocrlf=true 的默认行为会做这个转换，
+# 因此必须用本文件显式覆盖。
+# ─────────────────────────────────────────────────────────────
+
+* text=auto eol=lf
+
+# fnOS 包脚本：必须 LF
+*.sh   text eol=lf
+davflare/cmd/**     text eol=lf
+davflare/wizard/**  text eol=lf
+davflare/config/**  text eol=lf
+davflare/manifest   text eol=lf
+
+# 源码与配置
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.svg   text eol=lf
+
+# 二进制：禁止任何换行转换
+*.png    binary
+*.PNG    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.woff   binary
+*.woff2  binary
+*.fpk    binary
+*.tgz    binary
+*.gz     binary
+*.zip    binary
+
+# 依赖锁文件不参与 diff / 语言统计，减少噪音
+package-lock.json  -diff linguist-generated

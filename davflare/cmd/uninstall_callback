@@ -1,0 +1,96 @@
+#!/bin/bash
+#
+# 卸载后：按用户在卸载向导里的选择处理数据。
+#
+#   wizard_data_action = keep    → 只停进程，数据与配置原样保留（默认）
+#   wizard_data_action = delete  → 在「目录确实属于本应用」的前提下删除数据
+#
+# 安全闸门（重要）：
+#   Davflare 允许把数据目录指向任意 NAS 目录（例如用户自己的 /vol1/SSD）。
+#   这类目录里的文件是用户的东西，卸载程序绝不能误删。因此这里分三档处理：
+#     1. 数据目录就是本应用自己的共享目录（config/resource 声明的 data-share）
+#        → 视为应用自有数据，按用户选择整体删除。
+#     2. 数据目录落在 ${TRIM_PKGVAR} 内（兜底目录）
+#        → 应用自有数据，整体删除。
+#     3. 其它任何目录（用户已有的资料目录、用户授权目录、自定义路径）
+#        → 只删除 Davflare 自己创建的内部状态目录 _$flaredrive$，
+#          其余文件一律保留，并在日志中明确说明。
+#
+set -uo pipefail
+
+DAVFLARE_HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1090
+. "${DAVFLARE_HERE}/_common.sh"
+
+davflare_state_dir_of() {
+    # Davflare 把自身状态（配置、分享、回收站、图床索引、API 密钥、收集链接）
+    # 以真实对象的形式放在桶根目录下的 _$flaredrive$ 里。
+    printf '%s' "$1/_\$flaredrive\$"
+}
+
+action="$(davflare_wizard wizard_data_action "keep")"
+case "${action}" in
+    delete|remove|uninstall|1|true) action="delete" ;;
+    *) action="keep" ;;
+esac
+
+# 幂等停止：框架一般已经停过进程，这里再兜一次底。
+"${DAVFLARE_HERE}/main" stop >/dev/null 2>&1 || true
+rm -f "${DAVFLARE_PID_FILE}" 2>/dev/null || true
+
+if [ "${action}" != "delete" ]; then
+    davflare_log "卸载：按用户选择保留数据。"
+    davflare_log "  · 数据目录与站点文件保留在原位"
+    davflare_log "  · 运行时配置保留在 ${DAVFLARE_CONF_DIR}"
+    davflare_log "  · 重新安装本应用后会直接接管现有数据"
+    exit 0
+fi
+
+# ---- 解析数据目录 ----
+data_dir=""
+if [ -r "${DAVFLARE_ENV_FILE}" ]; then
+    data_dir="$(davflare_read_old_env DAVFLARE_DATA_DIR)"
+fi
+if [ -z "${data_dir}" ]; then
+    data_dir="$(davflare_resolve_data_dir "")"
+fi
+
+own_share="${TRIM_DATA_SHARE_PATHS%%:*}"
+own_data="0"
+if [ -n "${own_share}" ] && [ "${data_dir}" = "${own_share}" ]; then
+    own_data="1"
+fi
+case "${data_dir}" in
+    "${DAVFLARE_PKGVAR}"|"${DAVFLARE_PKGVAR}"/*) own_data="1" ;;
+esac
+
+davflare_log "卸载：用户选择删除数据，数据目录为 ${data_dir}"
+
+if [ "${own_data}" = "1" ]; then
+    if [ -d "${data_dir}" ]; then
+        # 只清空目录内容：保留目录本身，让 fnOS 继续管理这个共享目录。
+        find "${data_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+    fi
+    davflare_log "  · 已清空应用共享目录 ${data_dir}"
+else
+    state_dir="$(davflare_state_dir_of "${data_dir}")"
+    if [ -d "${state_dir}" ]; then
+        rm -rf -- "${state_dir}" 2>/dev/null || true
+        davflare_log "  · 已删除应用内部状态目录 ${state_dir}"
+    fi
+    davflare_log "  · 注意：${data_dir} 不是本应用的共享目录，其中属于用户本人的文件已全部保留。"
+fi
+
+# 清理应用变量目录里的运行时数据（元数据索引、分块上传暂存、日志、配置、密码）。
+for target in \
+    "${DAVFLARE_PKGVAR}/meta" \
+    "${DAVFLARE_PKGVAR}/tmp" \
+    "${DAVFLARE_PKGVAR}/conf" \
+    "${DAVFLARE_LOG_FILE}" \
+    "${DAVFLARE_PID_FILE}"
+do
+    [ -e "${target}" ] && rm -rf -- "${target}" 2>/dev/null || true
+done
+
+davflare_log "卸载完成。"
+exit 0

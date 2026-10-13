@@ -1,0 +1,258 @@
+import { gateDriveProductRoute, loadFeatureFlags } from "./_flags";
+import {
+  imageObjectKey,
+  imageResponseHeaders,
+  parseImagePath,
+  resolveSitesHostRoute,
+} from "./_images";
+import {
+  indexFallbackKey,
+  isSiteFolderMarker,
+  isSitesHost,
+  loadSiteConfig,
+  loadSlugForHostname,
+  parseSitesPath,
+  parseSitesRootPath,
+  siteConfigPolicyAt,
+  siteNotFoundKey,
+  sitePasswordAuthorized,
+  siteSpaKey,
+  sitesNotFound,
+  sitesNotFoundPage,
+  sitesResponse,
+  sitesSlashRedirect,
+  sitesUnauthorized,
+  SITES_PREFIX,
+} from "./_sites";
+import {
+  SITE_MANIFEST_NAMES,
+  SiteServePolicy,
+  loadSiteServePolicy,
+  siteFileForcesDownload,
+} from "./siteManifest";
+
+interface MiddlewareEnv {
+  BUCKET: R2Bucket;
+  SITES_HOST?: string;
+}
+
+async function serveImage(
+  bucket: R2Bucket,
+  id: string,
+  head: boolean
+): Promise<Response> {
+  const object = await bucket.get(imageObjectKey(id));
+  if (object === null) return sitesNotFound();
+  const contentType =
+    object.customMetadata?.contentType ||
+    object.httpMetadata?.contentType ||
+    "application/octet-stream";
+  const filename = object.customMetadata?.name;
+  const headers = imageResponseHeaders({
+    contentType,
+    filename,
+    etag: object.httpEtag,
+  });
+  return new Response(head ? null : object.body, { status: 200, headers });
+}
+
+async function serveSlugSite(
+  context: EventContext<MiddlewareEnv, any, any>,
+  parsed: { slug: string; key: string; tryIndex: boolean; redirectToSlash?: boolean }
+): Promise<Response> {
+  const method = context.request.method.toUpperCase();
+  // 站点根不带斜杠：无条件跳转，不读 R2，也不泄露站点是否存在 / 是否加密（#145）
+  if (parsed.redirectToSlash) return sitesSlashRedirect(context.request.url);
+  // Password gate runs before any content (and before a future _redirects hook).
+  // Load config once up front so SPA/404 reuse it without a second R2 get.
+  const config = await loadSiteConfig(context.env.BUCKET, parsed.slug);
+  const passwordHash = config?.passwordHash;
+  const configPolicyAt = siteConfigPolicyAt(config);
+  const privateCache = Boolean(passwordHash);
+  if (passwordHash) {
+    if (!(await sitePasswordAuthorized(context.request, passwordHash))) {
+      return sitesUnauthorized();
+    }
+  }
+
+  // 生成型站点（公开目录 / 相册 / 文档站）里的 active 文件强制下载（#146）。
+  // 清单只在请求 active 类型时才读，且与正文读取并行；同一请求内最多读一次。
+  const sitePrefix = `${SITES_PREFIX}${parsed.slug}/`;
+  // 站点根的清单文件是内部记录（列着所有生成文件），不对外提供（#147）
+  if ((SITE_MANIFEST_NAMES as readonly string[]).includes(parsed.key.slice(sitePrefix.length))) {
+    return sitesNotFound();
+  }
+  let policyPromise: Promise<SiteServePolicy> | null = null;
+  const loadPolicy = () => (policyPromise ??= loadSiteServePolicy(context.env.BUCKET, sitePrefix));
+  const forcesDownload = async (objectKey: string): Promise<boolean> => {
+    const rel = objectKey.slice(sitePrefix.length);
+    if (!siteFileForcesDownload("dir", rel)) return false; // 不是 active 类型 / 是首页：无需读清单
+    const policy = await loadPolicy();
+    return siteFileForcesDownload(policy.kind, rel, policy.docsPages);
+  };
+  if (siteFileForcesDownload("dir", parsed.key.slice(sitePrefix.length))) {
+    policyPromise = loadSiteServePolicy(context.env.BUCKET, sitePrefix);
+  }
+
+  const key = parsed.key;
+  let object: R2ObjectBody | null = await context.env.BUCKET.get(key);
+  // 文件夹标记对象（MKCOL / 新建文件夹 / 上传 API 建的目录）按目录处理，绝不当空文件 200 返回（#157）
+  const folderMarker = isSiteFolderMarker(key, object);
+  if (folderMarker) object = null; // 标记对象是 0 字节，不读正文
+  if (!object && (parsed.tryIndex || folderMarker) && !key.endsWith("/")) {
+    // `/{slug}/sub` 不是文件但 `sub/index.html` 存在：跳到 `/{slug}/sub/`，
+    // 否则页面里的相对链接会按上一级目录解析（#145）。只需 head，不读正文。
+    const indexHead = await context.env.BUCKET.head(indexFallbackKey(parsed.key));
+    if (indexHead) return sitesSlashRedirect(context.request.url, { privateCache });
+  }
+  if (!object) {
+    if (config?.spa) {
+      const spaObject = await context.env.BUCKET.get(siteSpaKey(parsed.slug));
+      if (spaObject) {
+        return sitesResponse(
+          { body: spaObject.body, httpEtag: spaObject.httpEtag, uploaded: spaObject.uploaded },
+          siteSpaKey(parsed.slug),
+          method === "HEAD",
+          {
+            privateCache,
+            ifNoneMatch: context.request.headers.get("If-None-Match"),
+            ifModifiedSince: context.request.headers.get("If-Modified-Since"),
+            configPolicyAt,
+          }
+        );
+      }
+      return sitesNotFound();
+    }
+    const notFoundObject = await context.env.BUCKET.get(
+      siteNotFoundKey(parsed.slug)
+    );
+    // 自定义 404 页只属于普通静态站。生成型站点（公开目录 / 相册 / 文档站）里的 404.html
+    // 要么是复制进来的用户文件（#146），要么是名叫 404.md 的笔记生成的普通页面（#147），都不当 404 页。
+    if (notFoundObject && !(await loadPolicy()).kind) {
+      return sitesNotFoundPage({ body: notFoundObject.body }, method === "HEAD");
+    }
+    return sitesNotFound();
+  }
+
+  const download = await forcesDownload(key);
+  return sitesResponse(
+    { body: object.body, httpEtag: object.httpEtag, uploaded: object.uploaded },
+    key,
+    method === "HEAD",
+    {
+      privateCache,
+      download,
+      ifNoneMatch: context.request.headers.get("If-None-Match"),
+      ifModifiedSince: context.request.headers.get("If-Modified-Since"),
+      // active 类型读过清单：服务规则的修改时间并入 Last-Modified（#170）
+      policyUpdatedAt: policyPromise ? (await policyPromise).updatedAt : null,
+      // 改回普通站时记下的时间（#173）：清单已删，靠它让 Last-Modified 不倒退
+      configPolicyAt,
+    }
+  );
+}
+
+export const onRequest: PagesFunction<MiddlewareEnv> = async (context) => {
+  const host =
+    context.request.headers.get("Host") ||
+    new URL(context.request.url).host;
+  const url = new URL(context.request.url);
+  const method = context.request.method.toUpperCase();
+
+  if (isSitesHost(host, context.env.SITES_HOST)) {
+    if (method !== "GET" && method !== "HEAD") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: {
+          Allow: "GET, HEAD",
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    }
+
+    const flags = await loadFeatureFlags(context.env.BUCKET);
+    const route = resolveSitesHostRoute(url.pathname, flags);
+    if (route.kind === "notFound") return sitesNotFound();
+    if (route.kind === "image") {
+      return serveImage(context.env.BUCKET, route.id, method === "HEAD");
+    }
+    return serveSlugSite(context, route);
+  }
+
+  // Per-slug custom hostname: serve sites/{slug}/ at the domain root.
+  // Order: hostname resolve → password gate (inside serveSlugSite) → content.
+  // Skip non-GET/HEAD and drive product prefixes so the drive origin stays cheap.
+  // (Custom hostnames should not shadow /api|/webdav|/mcp|/share|/collect.)
+  // /collect 是文件收集链接的上传页（#154 N2）：和 /share 一样不查自定义域名，
+  // 免得站点里恰好有 collect/ 目录时把收集链接盖掉，也省一次 R2 读。
+  const path = url.pathname;
+  const skipCustomHostLookup =
+    path === "/api" ||
+    path.startsWith("/api/") ||
+    path === "/webdav" ||
+    path.startsWith("/webdav/") ||
+    path === "/mcp" ||
+    path.startsWith("/mcp/") ||
+    path === "/share" ||
+    path.startsWith("/share/") ||
+    path === "/collect" ||
+    path.startsWith("/collect/");
+  if ((method === "GET" || method === "HEAD") && !skipCustomHostLookup) {
+    // 飞牛适配：图床图片（/i/{id}）原本只在 SITES_HOST 主机上服务；NAS 上只有一个访问
+    // 地址，因此任意主机都按 id 服务 —— 只对**合法 id** 读一次 R2（字符串判断在前，
+    // 其它路径零开销）。图片不存在或图床开关关闭时返回 404，与 SITES_HOST 主机上的
+    // 行为一致，且不再继续做站点 slug 探测（`/i/x` 里首段 "i" 不是站点 slug）。
+    const anyHostImage = parseImagePath(url.pathname);
+    if (anyHostImage.ok) {
+      const imageObject = await context.env.BUCKET.head(
+        imageObjectKey(anyHostImage.id)
+      );
+      if (imageObject) {
+        const flags = await loadFeatureFlags(context.env.BUCKET);
+        if (flags.imageHost) {
+          return serveImage(context.env.BUCKET, anyHostImage.id, method === "HEAD");
+        }
+      }
+      return sitesNotFound();
+    }
+
+    const customSlug = await loadSlugForHostname(context.env.BUCKET, host);
+    if (customSlug) {
+      const flags = await loadFeatureFlags(context.env.BUCKET);
+      if (!flags.sites) return sitesNotFound();
+      const parsed = parseSitesRootPath(path, customSlug);
+      if (!parsed.ok) return sitesNotFound();
+      return serveSlugSite(context, parsed);
+    }
+
+    // 飞牛适配：NAS 上用户只有一个地址（IP 或主机名），不会为站点再配第二个域名；
+    // 而网盘 SPA 是 hash 路由（location.pathname 不参与网盘导航），所以在**任意主机**上
+    // 都可以放心地把 /{slug}/… 交给站点处理——前提是这个 slug 真的对应一个已发布站点。
+    // 存在性探测 = head(sites/{slug}/index.html)：一次元数据读；未命中就按原路落到
+    // 静态资产 / SPA，行为与之前完全一致。带密码的站点仍走 serveSlugSite 里的密码门。
+    const anyHostParsed = parseSitesPath(url.pathname);
+    if (anyHostParsed.ok) {
+      const flags = await loadFeatureFlags(context.env.BUCKET);
+      if (flags.sites) {
+        const siteIndex = await context.env.BUCKET.head(
+          `${SITES_PREFIX}${anyHostParsed.slug}/index.html`
+        );
+        if (siteIndex) return serveSlugSite(context, anyHostParsed);
+      }
+    }
+  }
+
+  // Only hit R2 for product routes; static assets and /api/* skip the extra read.
+  if (
+    url.pathname === "/webdav" ||
+    url.pathname.startsWith("/webdav/") ||
+    url.pathname === "/mcp" ||
+    url.pathname.startsWith("/mcp/")
+  ) {
+    const flags = await loadFeatureFlags(context.env.BUCKET);
+    const blocked = gateDriveProductRoute(url.pathname, flags, context.request);
+    if (blocked) return blocked;
+  }
+
+  return context.next();
+};

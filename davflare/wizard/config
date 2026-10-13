@@ -1,0 +1,103 @@
+[
+  {
+    "stepTitle": "应用设置",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "这里的每一项留空即表示「保持当前配置不变」，不会把已有配置清掉。密码留空表示不修改密码。修改保存后，若服务原本在运行，会自动用新配置重启。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_port",
+        "label": "服务端口",
+        "helpText": "当前端口可在飞牛应用中心的 Davflare 卡片上查看，或读取 /var/apps/davflare/var/conf/davflare.env。留空保持不变。",
+        "initValue": "",
+        "rules": [
+          {
+            "pattern": "^[0-9]*$",
+            "message": "端口号必须为正整数，或留空保持不变"
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "field": "wizard_data_dir",
+        "label": "数据目录",
+        "helpText": "修改后 Davflare 会改用新目录，不会自动搬迁旧文件。留空保持不变。",
+        "initValue": ""
+      },
+      {
+        "type": "text",
+        "field": "wizard_username",
+        "label": "管理员账号",
+        "helpText": "留空保持不变。",
+        "initValue": ""
+      },
+      {
+        "type": "password",
+        "field": "wizard_password",
+        "label": "管理员密码",
+        "helpText": "留空表示不修改密码。填写后立即生效，WebDAV 客户端需要同步更新。",
+        "initValue": ""
+      },
+      {
+        "type": "switch",
+        "field": "wizard_allow_iframe",
+        "label": "允许在飞牛桌面内嵌打开",
+        "helpText": "留空或不改动时保持当前设置。",
+        "initValue": "1"
+      },
+      {
+        "type": "switch",
+        "field": "wizard_public_read",
+        "label": "允许匿名只读访问",
+        "helpText": "开启后未登录访客可浏览与下载，不能修改。留空或不改动时保持当前设置。"
+      },
+      {
+        "type": "switch",
+        "field": "wizard_public_dir_on",
+        "label": "启用匿名 WebDAV 目录",
+        "helpText": "总开关。只有本开关开启、且下方填了目录名时，那个目录才允许匿名只读访问；任何一边不具备都不生效。需要临时停掉匿名访问时关掉本开关即可，目录名配置会保留，随时能再打开。留空或不改动时保持当前设置。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_public_dir",
+        "label": "匿名 WebDAV 目录（只读）",
+        "helpText": "填网盘根目录下已存在的文件夹名，例如 public 或 共享文件（不要带 /）。保存后，只有上面的总开关同时开启，任何人才能通过 http://<NAS地址>:<端口>/webdav/public/ 匿名只读访问该文件夹。留空保持当前设置；填 0 或 off 表示清空目录名。",
+        "initValue": ""
+      },
+      {
+        "type": "text",
+        "field": "wizard_sites_host",
+        "label": "站点 / 图床域名",
+        "helpText": "站点页面与图床图片的访问主机名，只要主机名、不要 https://，端口会被忽略；必须与平时打开网盘用的地址不同。例如：平时用 http://192.168.1.10:8087 打开网盘，这里就填 fnos.local，保存后站点地址为 http://fnos.local:8087/<slug>/、图床直链为 http://fnos.local:8087/i/{id}。留空保持当前设置。",
+        "initValue": ""
+      },
+      {
+        "type": "text",
+        "field": "wizard_trash_days",
+        "label": "回收站保留天数",
+        "helpText": "留空表示不自动清理。",
+        "initValue": "",
+        "rules": [
+          {
+            "pattern": "^[0-9]*$",
+            "message": "请填写非负整数，或留空保持不变"
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "field": "wizard_frame_ancestors",
+        "label": "允许内嵌的来源",
+        "helpText": "对应响应头 frame-ancestors，默认 *。留空保持当前设置。",
+        "initValue": ""
+      },
+      {
+        "type": "switch",
+        "field": "wizard_log_requests",
+        "label": "记录访问日志"
+      }
+    ]
+  }
+]

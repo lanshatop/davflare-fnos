@@ -1,0 +1,309 @@
+# Davflare Open API
+
+[English](API.md) | [中文](API.zh-CN.md)
+
+← [README](../README.md)
+
+Create keys in the web UI: ExplorerBar 「API」 or account menu 「开放接口」. Full keys are shown once; only SHA-256 hashes are stored. Auth is `Authorization: Bearer <apiKey>` or `X-Api-Key: <apiKey>` (no web session). Manage keys via session-authenticated `GET` / `POST` / `DELETE` `/api/keys`. Usage docs are also on the API settings page.
+
+If the **API Key** feature switch is off, Bearer / `X-Api-Key` calls fail with **401**. The web session (Basic) APIs keep working. **MCP requires API Key**: `POST /mcp` is **404** when either the MCP switch or the API Key switch is off.
+
+Owner feature flags live in R2 (`_$flaredrive$/config.json`). `GET /api/config` (session) returns `username`, `publicRead`, `sitesHost`, and `webdav` / `mcp` / `apiKey` / `sites` / `imageHost` (all default **true**). `PATCH /api/config` with a JSON object of those booleans is **Basic session only** — presenting `Bearer` or `X-Api-Key` returns **403**.
+
+`GET /api/setup` (Basic session only) runs the post-deploy checklist (R2, WebDAV PROPFIND, flags, `SITES_HOST`, MCP `tools/list`) used by `#/setup`. See [deploy.md](./deploy.md).
+
+Internal `_$flaredrive$/` keys are rejected. Operations covering more than 1000 objects return **400** and must be batched.
+
+### Upload
+
+Default `POST /api/upload` uniqueNames collisions (`name (2).ext`). Add `?overwrite=1` (or `true`) to PUT/replace the same path + filename.
+
+```bash
+# multipart
+curl -X POST "https://<your-domain.com>/api/upload?path=folder/" \
+  -H "Authorization: Bearer <apiKey>" \
+  -F "file=@photo.jpg"
+
+# also accepts X-Api-Key, or a raw body with X-File-Name
+curl -X POST "https://<your-domain.com>/api/upload?path=docs/" \
+  -H "X-Api-Key: <apiKey>" \
+  -H "X-File-Name: notes.txt" \
+  --data-binary @notes.txt
+
+# overwrite upload
+curl -X POST "https://<your-domain.com>/api/upload?path=folder/&overwrite=1" \
+  -H "Authorization: Bearer <apiKey>" \
+  -F "file=@photo.jpg"
+```
+
+Single-request uploads are limited to about 100 MB (**HTTP 413** otherwise). Larger files use the 3-step multipart API:
+
+```bash
+# 1) create
+curl -X POST "https://<your-domain.com>/api/upload?uploads&path=folder/big.bin" \
+  -H "Authorization: Bearer <apiKey>"
+# → 201 { key, uploadId }
+
+# 2) upload each part (≤100MB per request, partNumber 1..10000)
+curl -X PUT "https://<your-domain.com>/api/upload?path=folder/big.bin&uploadId=<id>&partNumber=1" \
+  -H "Authorization: Bearer <apiKey>" \
+  --data-binary @part1.bin
+# → 200 { partNumber, etag }
+
+# 3) complete with the collected parts (order matters)
+curl -X POST "https://<your-domain.com>/api/upload?path=folder/big.bin&uploadId=<id>" \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"parts":[{"partNumber":1,"etag":"..."},{"partNumber":2,"etag":"..."}]}'
+
+# abort an unfinished upload
+curl -X DELETE "https://<your-domain.com>/api/upload?path=folder/big.bin&uploadId=<id>" \
+  -H "Authorization: Bearer <apiKey>"
+```
+
+### List, download, mkdir
+
+The same keys can list a folder and download each file. Single-file download stays on `/api/download`. To zip a folder **without** creating a public share link, use authenticated `/api/archive` (or the MCP `zip` tool). Directory shares still work when you want a link.
+
+```bash
+# Depth-1 list (empty path = root). Does not recurse.
+curl "https://<your-domain.com>/api/list?path=folder/" \
+  -H "Authorization: Bearer <apiKey>"
+
+# download each item where isDir is false
+curl -L "https://<your-domain.com>/api/download?path=folder/notes.txt" \
+  -H "Authorization: Bearer <apiKey>" \
+  -o notes.txt
+
+# also accepts X-Api-Key
+curl -L "https://<your-domain.com>/api/download?path=folder/notes.txt" \
+  -H "X-Api-Key: <apiKey>" \
+  -o notes.txt
+
+# zip a folder (or single file) — streams application/zip; no public share link
+curl -L "https://<your-domain.com>/api/archive?path=folder/" \
+  -H "Authorization: Bearer <apiKey>" \
+  -o folder.zip
+
+# multi-select zip (same body the web UI uses); Basic session or API key
+curl -X POST "https://<your-domain.com>/api/archive" \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"keys":["folder/a.txt","folder/sub/"]}' \
+  -o archive.zip
+```
+
+`GET /api/list` returns `{ items: [{ key, name, size, isDir, uploaded, etag }] }` for the current folder only. Files always include numeric `size`, ISO `uploaded` (and alias `updated`), and R2 `etag`. Delimited-prefix folders have `isDir: true`, `size: 0`, and `uploaded: null` (unknown; no fake mtime). Nested folders: call `/api/list` again with that item's `key`. If `path` is a file, the list API returns **400** and tells you to use `/api/download`. Missing folder: **404**. Bad/expired key: **401**. Large folders: add `limit=1..1000` (plus `cursor` from the previous response) for paged reads — the response then carries `nextCursor` while more pages remain.
+
+`GET /api/download` `path` is the object key. **HTTP 200** streams the file (`Content-Type` from R2 or `application/octet-stream`, `Content-Disposition: attachment`). Missing/empty path or a directory/prefix folder returns **400**; unknown object **404**; bad/expired key **401**. Internal `_$flaredrive$/` keys are rejected.
+
+`GET /api/archive?path=` zips one folder or file with the same Bearer / `X-Api-Key` (or web Basic session). **HTTP 200** streams `application/zip`. Folder keys strip the folder prefix inside the zip (same as directory shares). Missing path **400**; unknown path **404**; bad/expired key **401**. Internal `_$flaredrive$/` keys are rejected. `POST /api/archive` with `{ "keys": [...] }` packs multiple selections (web UI multi-download); same auth and internal-key rules. Optional `"base": "folder/"` (the folder the selection lives in) makes entry paths relative to it and names the zip `<folder>.zip`; without it entries keep full keys and the name is `archive.zip`. Zip entries are marked as made on Unix with UTF-8 names (bit 11), so Linux `unzip` shows non-ASCII (e.g. Chinese) names correctly. Entry times are each object's upload time, stored as an Info-ZIP extended timestamp (`0x5455`, UTC) so `unzip` / `zipinfo` / 7-Zip / macOS show local time; the legacy DOS time field is written in UTC (tools that ignore `0x5455`, e.g. Windows Explorer, show UTC).
+
+Create folders from scripts (parents are auto-created):
+
+```bash
+# JSON body or ?path= both work. 201 created / 200 already exists / 409 same-name file
+curl -X POST "https://<your-domain.com>/api/mkdir" \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"path":"folder/sub"}'
+```
+
+### Backup, rename, delete
+
+```bash
+# conflict backup: rename remote to name.conflict-YYYYMMDDTHHMMSS.ext (UTC)
+curl -X POST "https://<your-domain.com>/api/backup?path=folder/notes.txt" \
+  -H "Authorization: Bearer <apiKey>"
+
+# rename (409 if `to` exists unless overwrite=1; directories move recursively, no overwrite)
+curl -X POST "https://<your-domain.com>/api/rename" \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"from":"folder/old.txt","to":"folder/new.txt"}'
+
+# delete a file only
+curl -X DELETE "https://<your-domain.com>/api/delete?path=folder/notes.txt" \
+  -H "Authorization: Bearer <apiKey>"
+
+# soft delete (goes to the recycle bin, restorable; works for directories too)
+curl -X DELETE "https://<your-domain.com>/api/delete?path=folder/notes.txt&soft=1" \
+  -H "Authorization: Bearer <apiKey>"
+
+# delete a whole directory recursively (≤1000 objects per call)
+curl -X DELETE "https://<your-domain.com>/api/delete?path=folder/sub" \
+  -H "Authorization: Bearer <apiKey>"
+```
+
+`/api/rename` and `/api/delete` accept directories — rename moves the whole tree, delete removes it recursively (hard delete unless `soft=1`). `/api/backup` on a directory renames the whole tree to `name.conflict-<UTCstamp>`. Operations covering more than 1000 objects return **400** and must be batched.
+
+### Shares
+
+`POST /api/shares` accepts a folder key too, with or without a trailing slash (`"folder"` and `"folder/"` are the same share target, like `/api/archive`). Like file shares, opening the plain link shows the landing page (marked "Folder (zip download)"); its download button — or `GET /share/<token>?download=1` directly — streams the whole tree as a zip rooted at the folder (extract code and expiry apply as usual). Share management (`GET`/`POST`/`DELETE /api/shares`) accepts **both** the web session (Basic) and an API key, so scripts and MCP can create/list/revoke shares.
+
+`GET /share/<token>` (no auth) returns a **server-rendered, zero-JS landing page** (light/dark via `prefers-color-scheme`, language via `Accept-Language`): file name, type, size, shared time, plus inline preview (`<img>` / `<video>` / `<audio>` / `<iframe>`) for preview-safe types. The download button points at `?download=1`. Query params on the same URL:
+
+- `?download=1` — raw bytes with `Content-Disposition: attachment` (ASCII `filename=` fallback plus UTF-8 `filename*`, so `curl -OJ` saves under the file name instead of the token; folders are named `<folder>.zip`). **Scripts that used to download from the plain share link must switch to this** — for files *and* folders (a folder returns `application/zip`; `?raw=1` on a folder also returns the zip, since folders have no preview).
+- `?raw=1` — raw bytes inline (`Content-Disposition: inline`) for preview-safe types (image / video / audio / PDF / text); other types still download as an attachment. The response keeps the existing hardening — `Content-Security-Policy: sandbox`, `X-Content-Type-Options: nosniff` — and honors `Range` (video seeking / resumable downloads).
+
+Extract-code gating is unchanged and applies to the landing page and both params: the legacy `?code=` query keeps working, the form POST sets a Path-scoped `HttpOnly` cookie, and links rendered on the landing page inherit `?code=` so previews work from old-style links. Expired → **410**, revoked/missing → **404**, wrong code → **403** form.
+
+### File request links (anonymous upload)
+
+A file request link lets anyone with the link upload into **one folder** without being able to see, list or download anything. It is a separate, write-only token type: records live in `_$flaredrive$/collects/<token>.json` (shares live in `_$flaredrive$/shares/`), so a collect token never works on `/share/…` and a share token never works on `/collect/…`.
+
+Management (Basic session or API key, like shares):
+
+```bash
+# create (folder must exist; not under sites/ or the internal prefix; folder path ≤ 774 UTF-8 bytes). Default and maximum expiry: 168 h (7 days)
+curl -X POST "https://<your-domain.com>/api/collects" \
+  -H "Authorization: Bearer <apiKey>" -H "Content-Type: application/json" \
+  -d '{"folder":"inbox/homework","expiresInHours":72,"note":"Please upload this week'"'"'s homework"}'
+# → 201 { token, url: "https://<your-domain.com>/collect/<token>", status, usage, limits, ... }
+
+curl "https://<your-domain.com>/api/collects" -H "Authorization: Bearer <apiKey>"             # list
+curl -X PATCH "https://<your-domain.com>/api/collects?token=<token>" \
+  -H "Authorization: Bearer <apiKey>" -H "Content-Type: application/json" -d '{"disabled":true}'  # disable (one-way)
+curl -X DELETE "https://<your-domain.com>/api/collects?token=<token>" -H "Authorization: Bearer <apiKey>"  # delete the link (received files stay)
+```
+
+Disabling or deleting a link aborts its in-flight uploads.
+
+Anonymous side (no auth, the token is the credential): `GET /collect/<token>` renders the upload page (one small inline script for chunking, CSP-nonce'd). The page drives:
+
+| Endpoint | Body | Notes |
+| --- | --- | --- |
+| `POST /collect/<token>/create` | `{ name, size, type }` | → `{ uploadId, partSize: 10485760, partCount }`. Checks expiry/disabled, 100 MiB per file, 200 files and 2 GiB per link (counting in-flight uploads), ≤10 concurrent uploads (an upload with no new part for about 1 hour, or started over 24 hours ago, stops counting and is aborted), target folder still exists. |
+| `PUT /collect/<token>/part?uploadId=&partNumber=` | raw bytes | `Content-Length` required (411); >10 MiB → 413; every part except the last must be exactly 10 MiB, the last exactly the remainder. `uploadId` must have been created by **this** token (else 404). |
+| `POST /collect/<token>/complete` | `{ uploadId, parts }` | Re-checks limits with the actual size, then stores the file directly in the target folder under a server-chosen name. → `{ ok, size, remainingFiles, remainingBytes }` (the final name is **not** returned). |
+| `POST /collect/<token>/abort` | `{ uploadId }` | → 204. Allowed even after expiry/disable. |
+
+Errors are `{ "error": "<code>" }` (`not_found` 404, `expired`/`disabled`/`folder_gone` 410, `file_too_large`/`too_many_files`/`quota_exceeded`/`part_too_large` 413, `too_many_pending` 429, `busy` 503 …). Names are sanitized (last path segment only, control/bidi/invisible characters stripped, leading dots removed, `%XX` escapes and Windows-reserved characters replaced with `_`, capped at 180 characters / 240 UTF-8 bytes) and never overwrite: `a.txt` → `a-2.txt` → `a-3.txt`. Content types other than a passive allow-list (images, audio/video, PDF, plain text, archives, Office) are stored as `application/octet-stream`.
+
+### Copy, stat, search
+
+```bash
+# copy a file (409 if `to` exists unless overwrite=1; directories are not supported)
+curl -X POST "https://<your-domain.com>/api/copy" \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"from":"folder/a.txt","to":"folder/b.txt"}'
+
+# object metadata (kind file/directory, size, etag, uploaded, contentType)
+curl "https://<your-domain.com>/api/stat?path=folder/a.txt" \
+  -H "Authorization: Bearer <apiKey>"
+
+# search all objects by filename substring (cursor pagination)
+curl "https://<your-domain.com>/api/search?q=notes&limit=100" \
+  -H "Authorization: Bearer <apiKey>"
+```
+
+`GET /api/download` sends `Accept-Ranges: bytes` and honors a single `Range` header with **206** responses, so resumable/chunked downloads work with plain HTTP clients.
+
+### Feature flags and image host
+
+```bash
+# session only
+curl "https://<your-domain.com>/api/config" \
+  -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD"
+
+# PATCH is Basic session only — API keys are rejected (403)
+curl -X PATCH "https://<your-domain.com>/api/config" \
+  -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d '{"webdav":false,"imageHost":true}'
+```
+
+Image host (Basic session **or** API key, same as `/api/sites`; public bytes are on `SITES_HOST`, not the drive origin):
+
+```bash
+# list
+curl "https://<your-domain.com>/api/images" -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD"
+
+# upload (raw body + X-File-Name, or multipart field file)
+curl -X POST "https://<your-domain.com>/api/images" \
+  -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" \
+  -H "X-File-Name: shot.png" \
+  --data-binary @shot.png
+
+# delete
+curl -X DELETE "https://<your-domain.com>/api/images?id=<id>" \
+  -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD"
+```
+
+Public URL: `https://<SITES_HOST>/i/{id}`. SVG responses use `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`.
+
+### MCP
+
+Same-origin Streamable HTTP MCP at `POST /mcp` (JSON-RPC 2.0). Auth is the same `Authorization: Bearer <apiKey>` or `X-Api-Key` as the rest of this API (no web session, no OAuth). **MCP depends on the API Key switch** — if API Key is off (or MCP is off), `/mcp` returns **404**. Missing or invalid keys return **HTTP 401**. Tools: `list`, `upload`, `download`, `zip`, `mkdir`, `delete`, `search`, `move`, `copy`, `stat`, `share_create`, `share_list`, `share_revoke`, `trash_list`, `trash_restore`, `trash_empty`, `sites_list`, `sites_config`, `sites_delete`, `pull`, `push`, `publish_site`, `image_upload`, `image_list`, `image_delete` (they wrap the Open API handlers above). Uploads over 1 MiB are automatically sent in multipart chunks (cap **25 MB**; larger returns a tool error — use the web UI or scripts). Downloads over 1 MiB page with `part` / `partSize` (base64 slices). `zip` packs a folder via `/api/archive` (base64; same 1 MiB / `part` paging; hard cap 25 MB — larger use curl on `/api/archive`). Default `delete` is soft-delete to trash; pass `hard=true` to permanently delete. Recover with `trash_list` / `trash_restore`; permanently clear with `trash_empty`. `sites_*` manage the static sites under `sites/` (see [sites.md](./sites.md)); `upload`/`delete` also work directly on `sites/<slug>/` keys. `pull` walks `agents/{global|agent|agent/project}/{skills|rules|mcp}/` and returns layered files (merge: project > agent > global); large files page like `download`. `push` writes that tree (`mcp.json` must use `${env:...}`, not raw keys). `publish_site` copies a drive folder onto `sites/{slug}/` (overwrite same names; SPA config is kept; 404 if the Sites switch is off). `image_upload` / `image_list` / `image_delete` wrap `/api/images` (public `https://<SITES_HOST>/i/{id}` + Markdown; 20 MB cap; 404 if Image Host is off).
+
+```bash
+# initialize
+curl -X POST "https://<your-domain.com>/mcp" \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{}}}'
+
+# tools/list
+curl -X POST "https://<your-domain.com>/mcp" \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+Cursor (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "davflare": {
+      "url": "https://<your-domain.com>/mcp",
+      "headers": {
+        "Authorization": "Bearer <apiKey>"
+      }
+    }
+  }
+}
+```
+
+### Expiring share from chat
+
+1. Ask the agent to call `share_create` on a file or folder path, with `expiresInHours=24` (optional `extractCode`).
+2. Forward the returned share `url` (path `/share/{token}`) — it opens the landing page with a download button; for a direct download (e.g. `curl -OJ`) append `?download=1` (folders arrive as a zip).
+3. Manage with `share_list` / `share_revoke` (pass the `token`).
+
+### Zip a folder from chat (pull back locally)
+
+1. Ask the agent to call `zip` on a folder path (no `share_create`, no public link).
+2. Small archives (≤ 1 MiB) come back as base64 — decode and save as `.zip`.
+3. Larger ones: pass `part=1`, `part=2`, … (optional `partSize`) and concatenate the base64 slices; or curl `GET /api/archive?path=` with your API key.
+
+### Recover a mistaken delete from chat
+
+1. Soft-deleted via `delete` (default) — the file is in trash.
+2. Call `trash_list` to see `trashKey` / `originalKey`.
+3. Call `trash_restore` with that `trashKey` to put it back.
+4. Or `trash_empty` to permanently clear trash.
+
+### Try MCP from Cursor
+
+In-browser playground: open `#/mcp` (also linked from `#/settings`), paste an API Key, run **List tools** (`tools/list`) and **Try it** (read-only `list` on root), then copy Cursor `mcp.json` when both are green. Same `POST /mcp` — no new APIs.
+
+1. Leave **API Key** + **MCP** + **Sites** on in `#/settings`. Create a key.
+2. Paste into Cursor `mcp.json` (replace host + key) — same JSON as above.
+3. Open this repo's [`agents/examples/hello-site/`](../agents/examples/hello-site/) and tell Cursor to follow `SKILL.md` (uses only `publish_site` / optional `image_upload`).
+4. When it finishes you get `https://sites.<your-domain>/hello/` (your real `SITES_HOST`). No public shared demo.
+
+### Agent layouts
+
+Skills / rules / MCP snippets: `agents/{global|{agent}|{agent}/{project}}/{skills|rules|mcp}/`. v2 `pull` / `push` walk this tree (or use the web UI). Merge: project > agent > global. Do not store raw keys in `mcp.json`. Full convention: [agents.md](./agents.md).
+
+### Bidirectional sync recipe
+
+Local wins; backup remote on conflict. Same Bearer / `X-Api-Key` auth as upload; no web session. WebDAV protocol is unchanged.
+
+1. List with `GET /api/list` and compare local mtime/size/etag vs remote `uploaded` / `size` / `etag`.
+2. Local-only new/changed → `POST /api/upload?overwrite=1`.
+3. Remote-only new/changed → `GET /api/download`.
+4. Both changed → `POST /api/backup?path=remoteKey` then overwrite-upload local bytes to the original name.
+5. Optional local deletes: `DELETE /api/delete` (skip unless the client tracks a sync db). Extra remote-only files: download them.
