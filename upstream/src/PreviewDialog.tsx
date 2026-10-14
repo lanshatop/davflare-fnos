@@ -53,6 +53,7 @@ import { MOTION, Z_INDEX, warmShadow } from "./app/theme";
 import { FileItem } from "./app/types";
 import { downloadFile } from "./app/transfer";
 import { encodeKey, errorMessage, humanReadableSize } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 const LINE_NUMBER_CAP = 2000;
 const HIGHLIGHT_MAX_BYTES = 1024 * 1024;
@@ -433,7 +434,7 @@ function PreviewDialog({
   const copyAll = async () => {
     if (text == null) return;
     try {
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       onNotify(translate("copiedAllToast"), "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

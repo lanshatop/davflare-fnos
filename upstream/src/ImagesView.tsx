@@ -26,6 +26,7 @@ import { HostedImage, deleteImage, listImages, uploadImage } from "./app/images"
 import { NotifyFn } from "./app/notify";
 import { strings, translate } from "./app/strings";
 import { errorMessage, humanReadableSize } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function isImageFile(file: File) {
   if (file.type.startsWith("image/")) return true;
@@ -85,7 +86,7 @@ function ImagesView({
 
   const copy = async (text: string, ok: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       onNotify(ok, "success");
     } catch {
       onNotify(strings.copyFailed2, "error");

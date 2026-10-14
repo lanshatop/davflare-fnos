@@ -26,6 +26,7 @@ import { getLang, strings, translate } from "./app/strings";
 import { FileItem } from "./app/types";
 import { useSiteSlugGuard } from "./useSiteSlugGuard";
 import { errorMessage, humanReadableSize } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function PublishAlbumDialog({
   open,
@@ -102,7 +103,7 @@ function PublishAlbumDialog({
   const handleCopy = async () => {
     if (!resultUrl) return;
     try {
-      await navigator.clipboard.writeText(resultUrl);
+      await copyTextToClipboard(resultUrl);
       onNotify(strings.linkCopied, "success");
     } catch {
       onNotify(translate("publishAlbumFailed"), "error");

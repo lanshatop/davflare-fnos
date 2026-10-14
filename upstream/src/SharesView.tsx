@@ -24,6 +24,7 @@ import { formatShareClipboard, listShares, revokeShare, shareExpiryView } from "
 import { NotifyFn } from "./app/notify";
 import { ShareInfo } from "./app/types";
 import { errorMessage, formatDateTime, formatRelativeDateTime } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function SharesView({
   onNotify,
@@ -53,7 +54,7 @@ function SharesView({
 
   const copy = async (share: ShareInfo) => {
     try {
-      await navigator.clipboard.writeText(formatShareClipboard(share));
+      await copyTextToClipboard(formatShareClipboard(share));
       onNotify(translate("linkCopied"), "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

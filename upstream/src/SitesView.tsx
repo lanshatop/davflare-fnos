@@ -46,6 +46,7 @@ import {
 import { strings, translate } from "./app/strings";
 import { useUploadEnqueue } from "./app/transferQueue";
 import { errorMessage, humanReadableSize } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 /** 把 zip 条目路径规范成站点目录下的安全相对路径；不安全（穿越/绝对路径）返回 null。 */
 function safeArchivePath(path: string): string | null {
@@ -115,7 +116,7 @@ function SiteCard({
   const copyText = async (value: string | null) => {
     if (!value) return;
     try {
-      await navigator.clipboard.writeText(value);
+      await copyTextToClipboard(value);
       onNotify(translate("linkCopied"), "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

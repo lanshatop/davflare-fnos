@@ -34,6 +34,7 @@ import { fetchPath } from "./app/transfer";
 import { FileItem } from "./app/types";
 import { useSiteSlugGuard } from "./useSiteSlugGuard";
 import { errorMessage, humanReadableSize } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 /** 入口二选一：多选里的 .md 文件，或单选文件夹（取当前层 .md）。 */
 export type DocsPublishSource =
@@ -170,7 +171,7 @@ function PublishDocsDialog({
   const handleCopy = async () => {
     if (!resultUrl) return;
     try {
-      await navigator.clipboard.writeText(resultUrl);
+      await copyTextToClipboard(resultUrl);
       onNotify(strings.linkCopied, "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

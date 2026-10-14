@@ -23,6 +23,7 @@ import { NotifyFn } from "./app/notify";
 import { strings, translate } from "./app/strings";
 import { FileItem } from "./app/types";
 import { errorMessage } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 const NOTE_MAX = 200;
 
@@ -69,7 +70,7 @@ function CollectDialog({
       setItems((prev) => [created, ...prev.filter((item) => item.token !== created.token)]);
       setNote("");
       try {
-        await navigator.clipboard.writeText(created.url);
+        await copyTextToClipboard(created.url);
         onNotify(translate("collectLinkCreated"), "success");
       } catch {
         onNotify(translate("collectLinkCreatedNoCopy"), "success");

@@ -24,6 +24,7 @@ import {
 import { NotifyFn } from "./app/notify";
 import { getLang, strings, useLang } from "./app/strings";
 import { errorMessage } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function statusChip(status: SetupCheck["status"]) {
   if (status === "green") {
@@ -93,7 +94,7 @@ function SetupView({ onNotify }: { onNotify: NotifyFn }) {
   const copyMcp = async () => {
     if (!data?.mcpJson) return;
     try {
-      await navigator.clipboard.writeText(data.mcpJson);
+      await copyTextToClipboard(data.mcpJson);
       onNotify(strings.setupMcpCopied, "success");
     } catch {
       onNotify(strings.setupCopyFailed, "error");

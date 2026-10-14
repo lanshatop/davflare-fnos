@@ -10,7 +10,7 @@
 
 | 渠道 | 说明 |
 | --- | --- |
-| **安装包（推荐）** | 到 [Releases](https://github.com/lanshatop/davflare-fnos/releases/latest) 下载 `davflare-fnos-1.0.3.fpk`，在飞牛「应用中心 → 手动安装」中选择该文件 |
+| **安装包（推荐）** | 到 [Releases](https://github.com/lanshatop/davflare-fnos/releases/latest) 下载 `davflare-fnos-1.0.4.fpk`，在飞牛「应用中心 → 手动安装」中选择该文件 |
 | 源码自行构建 | 执行 `bash tools/build-fpk.sh`（需 `fnpack`），产物为 `davflare/davflare.fpk` |
 
 > **环境要求**：飞牛 fnOS `>= 1.1.3100`；依赖应用 `nodejs_v24`（应用中心会自动安装）；默认服务端口 `8087`。
@@ -231,7 +231,7 @@ Davflare 允许把数据目录指向用户已有的 NAS 目录（如 `/vol1/SSD`
 | 打包产物冒烟 | `/` 200 + `frame-ancestors *`（无 X-Frame-Options）；`/api/keys` Basic 签发；`/api/list` Basic→401、X-Api-Key→200；`mkdir` 201；`PROPFIND` 207；`/healthz` 200 |
 | 生命周期模拟（mock `TRIM_*`） | install → start → status(0/3) → 重复 start 幂等 → config 改端口自动重启（旧端口关、新端口开、密码/域名/天数留空保留）→ stop → uninstall keep/delete 两档 → 用户目录安全闸门 |
 | **真机实测（真实飞牛 NAS，局域网访问）** | 用真实账号逐项走查：WebDAV `MKCOL / PUT / GET / PROPFIND / COPY / MOVE / DELETE` 全通（含中文文件名、1 MiB 二进制逐字节一致、`Range` → 206、`If-None-Match` → 304）；`PUT` 300 MB → 201（5.6 s，无 100 MB / 2 GiB 上限）；`/api/keys` 签发密钥后 `/api/list`、`/api/upload`（multipart 与 raw，同名自动改名）全通；`/mcp` `initialize` + `tools/list` 通、无凭据 401；`/api/sites` 两种发布（`{slug,source}` 与 `dir` 三步 plan→copy→finish）均成功且**匿名可读**；分享（文件 + 带提取码目录）匿名可读；品牌 PUT / clearLogo 与 `/favicon.png` 全站换标生效后已还原 —— 本次由真机实测发现并修复了图床直链缺陷，验证数据已全部清理 |
-| `fnpack build` | 通过，`davflare.fpk`（gzip tar，内含 app.tgz）；包内已核对 `manifest` 为 `version = 1.0.3` 且 `distributor_url` 指向本适配版仓库、`server.cjs` 含图床文件名解码、品牌路由与加宽后的站点页样式 |
+| `fnpack build` | 通过，`davflare.fpk`（gzip tar，内含 app.tgz）；包内已核对 `manifest` 为 `version = 1.0.4` 且 `distributor_url` 指向本适配版仓库、`server.cjs` 含图床文件名解码、品牌路由与加宽后的站点页样式、前端主 chunk 含剪贴板降级复制代码 |
 
 > ⚠️ fnpack 在 Windows 上打包时文件权限位为 666（无执行位）。这是官方打包工具在非 POSIX 系统上的固有行为，fnOS 侧通过 `bash cmd/main` 方式调用脚本，不影响安装与运行；如在真机上遇到问题，可在 `cmd/install_callback` 里自行补 `chmod +x`。
 

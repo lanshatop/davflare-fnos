@@ -34,6 +34,7 @@ import {
 import { NotifyFn } from "./app/notify";
 import { FileItem, ShareInfo } from "./app/types";
 import { errorMessage, formatDateTime, formatRelativeDateTime } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function ShareDialog({
   open,
@@ -83,7 +84,7 @@ function ShareDialog({
       await refresh();
       onNotify(translate("shareLinkCreated"), "success");
       try {
-        await navigator.clipboard.writeText(formatShareClipboard(created));
+        await copyTextToClipboard(formatShareClipboard(created));
       } catch {
         // ignore; user can still copy from the list
       }
@@ -96,7 +97,7 @@ function ShareDialog({
 
   const copy = async (share: ShareInfo) => {
     try {
-      await navigator.clipboard.writeText(formatShareClipboard(share));
+      await copyTextToClipboard(formatShareClipboard(share));
       onNotify(translate("linkCopied"), "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

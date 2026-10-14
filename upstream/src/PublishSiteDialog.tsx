@@ -24,6 +24,7 @@ import { strings, translate } from "./app/strings";
 import { FileItem } from "./app/types";
 import { useSiteSlugGuard } from "./useSiteSlugGuard";
 import { errorMessage } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function PublishSiteDialog({
   open,
@@ -87,7 +88,7 @@ function PublishSiteDialog({
   const handleCopy = async () => {
     if (!resultUrl) return;
     try {
-      await navigator.clipboard.writeText(resultUrl);
+      await copyTextToClipboard(resultUrl);
       onNotify(strings.linkCopied, "success");
     } catch {
       onNotify(translate("publishSiteFailed"), "error");

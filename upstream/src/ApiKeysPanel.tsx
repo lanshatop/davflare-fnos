@@ -42,6 +42,7 @@ import { NotifyFn } from "./app/notify";
 import { strings, translate } from "./app/strings";
 import { ApiKeyInfo } from "./app/types";
 import { errorMessage } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function formatExpiry(expiresAt: string | null) {
   if (!expiresAt) return strings.apiNever;
@@ -110,7 +111,7 @@ function ApiKeysPanel({
 
   const copy = async (text: string, label: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       onNotify(translate("copiedFormat", { label }), "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

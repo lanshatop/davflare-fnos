@@ -32,6 +32,7 @@ import {
 import { NotifyFn } from "./app/notify";
 import { strings, translate, useLang } from "./app/strings";
 import { errorMessage } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 type StepStatus = "idle" | "loading" | "green" | "red";
 
@@ -151,7 +152,7 @@ function McpPlaygroundView({
 
   const copyMcp = async () => {
     try {
-      await navigator.clipboard.writeText(mcpJson);
+      await copyTextToClipboard(mcpJson);
       onNotify(strings.setupMcpCopied, "success");
     } catch {
       onNotify(strings.setupCopyFailed, "error");

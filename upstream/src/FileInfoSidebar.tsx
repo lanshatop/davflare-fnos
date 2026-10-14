@@ -29,6 +29,7 @@ import { MOTION, warmShadow } from "./app/theme";
 import { downloadFile, downloadFolderArchive } from "./app/transfer";
 import { canLazyThumbnail } from "./app/lazyThumbnail";
 import { FileItem } from "./app/types";
+import { copyTextToClipboard } from "./app/copyText";
 import {
   encodeKey,
   errorMessage,
@@ -116,7 +117,7 @@ function FileInfoSidebar({
 
   const copyText = async (text: string, toast: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       onNotify(toast, "success");
     } catch {
       onNotify(translate("copyFailed"), "error");

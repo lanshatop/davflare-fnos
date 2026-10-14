@@ -23,6 +23,7 @@ import { warmShadow } from "./app/theme";
 import { strings, translate } from "./app/strings";
 import { fetchPath } from "./app/transfer";
 import { FileItem } from "./app/types";
+import { copyTextToClipboard } from "./app/copyText";
 
 export type SearchScope = "folder" | "global";
 
@@ -62,7 +63,7 @@ function PathBar({
   };
   const copyPath = async () => {
     try {
-      await navigator.clipboard.writeText(pathText);
+      await copyTextToClipboard(pathText);
       onNotify(translate("pathCopied"), "success");
     } catch {
       onNotify(translate("copyFailed"), "error");

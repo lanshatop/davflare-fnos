@@ -32,6 +32,7 @@ import { fetchPath } from "./app/transfer";
 import { FileItem } from "./app/types";
 import { useSiteSlugGuard } from "./useSiteSlugGuard";
 import { errorMessage, humanReadableSize } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 function progressText(progress: DirPublishProgress | null): string {
   if (!progress || progress.phase === "plan") return strings.publishDirPreparing;
@@ -140,7 +141,7 @@ function PublishDirDialog({
   const handleCopy = async () => {
     if (!resultUrl) return;
     try {
-      await navigator.clipboard.writeText(resultUrl);
+      await copyTextToClipboard(resultUrl);
       onNotify(strings.linkCopied, "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

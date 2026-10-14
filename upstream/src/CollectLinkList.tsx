@@ -14,6 +14,7 @@ import { NotifyFn } from "./app/notify";
 import { shareExpiryView } from "./app/share";
 import { strings, translate } from "./app/strings";
 import { errorMessage, formatDateTime, formatRelativeDateTime, humanReadableSize } from "./app/utils";
+import { copyTextToClipboard } from "./app/copyText";
 
 /** 收集链接列表：分享管理页与收集对话框共用。状态/用量/有效期 + 复制、二维码、停用、删除。 */
 function CollectLinkList({
@@ -29,7 +30,7 @@ function CollectLinkList({
 }) {
   const copy = async (item: CollectInfo) => {
     try {
-      await navigator.clipboard.writeText(item.url);
+      await copyTextToClipboard(item.url);
       onNotify(translate("linkCopied"), "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");

@@ -18,6 +18,7 @@ import { NotifyFn } from "./app/notify";
 import { strings, translate } from "./app/strings";
 import { errorMessage } from "./app/utils";
 import ObsidianSyncCard from "./ObsidianSyncCard";
+import { copyTextToClipboard } from "./app/copyText";
 
 interface WebDavInfo {
   username: string;
@@ -61,7 +62,7 @@ function WebDavPanel({
 
   const copy = async (text: string, label: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       onNotify(translate("copiedFormat", { label }), "success");
     } catch {
       onNotify(translate("copyFailed2"), "error");
