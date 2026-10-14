@@ -1191,6 +1191,21 @@ describe("静态站（sites）与图床（imageHost）", () => {
     assert.ok(removed.status < 300);
   });
 
+  test("图床：中文文件名经百分号编码上传后原名入库（Headers 只能放 Latin-1）", async () => {
+    const png = Buffer.from(
+      "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6300010000050001",
+      "hex"
+    );
+    const name = "截图 说明🎉.png";
+    const uploaded = await api("/api/images", {
+      method: "POST",
+      headers: { "Content-Type": "image/png", "X-File-Name": encodeURIComponent(name) },
+      body: png,
+    });
+    assert.equal(uploaded.status, 201, "中文文件名图床上传失败");
+    assert.equal((await uploaded.json()).name, name);
+  });
+
   test("飞牛适配：图床图片在任意主机（IP 访问）也能直接打开；非图床路径仍回退 SPA", async () => {
     const png = Buffer.from(
       "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6300010000050001",

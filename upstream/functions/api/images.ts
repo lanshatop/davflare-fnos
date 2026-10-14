@@ -29,6 +29,21 @@ function sanitizeName(name: string) {
   return cleaned.replace(/[\u0000-\u001f]/g, "").trim().slice(0, 200);
 }
 
+/**
+ * X-File-Name 头只能携带 ISO-8859-1 字符，中文文件名必须由客户端先做百分号编码。
+ * 这里在服务端解回来；只有「解码成功且重新编码后与原值一致」才采用解码结果，
+ * 因此字面量里的 %（如 "50%off.png"）或老客户端发来的原样值不会被误伤。
+ */
+function decodeFileNameHeader(raw: string): string {
+  if (!raw.includes("%")) return raw;
+  try {
+    const decoded = decodeURIComponent(raw);
+    return decoded !== raw && encodeURIComponent(decoded) === raw ? decoded : raw;
+  } catch {
+    return raw;
+  }
+}
+
 interface ImageRecord {
   id: string;
   name: string;
@@ -131,7 +146,7 @@ export const onRequestPost: PagesFunction<ImagesEnv> = async (context) => {
   }
 
   const contentTypeHeader = request.headers.get("Content-Type") || "";
-  let filename = sanitizeName(request.headers.get("X-File-Name") || "");
+  let filename = sanitizeName(decodeFileNameHeader(request.headers.get("X-File-Name") || ""));
   let bytes: ArrayBuffer;
   let declaredType = contentTypeHeader.split(";")[0].trim();
 

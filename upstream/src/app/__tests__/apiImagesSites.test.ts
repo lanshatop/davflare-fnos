@@ -158,6 +158,44 @@ describe("images", () => {
     expect(((await response.json()) as { contentType: string }).contentType).toBe("image/png");
   });
 
+  test("POST：X-File-Name 百分号编码的中文文件名在服务端解回原名", async () => {
+    const bucket = new InMemoryBucket();
+    const response = await imagesOnPost(
+      makeContext(
+        request("/api/images", "POST", {
+          body: PNG_BYTES,
+          headers: {
+            "Content-Type": "image/png",
+            "X-File-Name": encodeURIComponent("截图 2024🎉.png"),
+          },
+        }),
+        makeEnv(bucket)
+      )
+    );
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { id: string; name: string };
+    expect(body.name).toBe("截图 2024🎉.png");
+    const head = await bucket.asBucket().head(imageObjectKey(body.id));
+    expect(head?.customMetadata?.name).toBe("截图 2024🎉.png");
+  });
+
+  test("POST：X-File-Name 里的字面 %（解码不通/不可逆）原样保留", async () => {
+    const bucket = new InMemoryBucket();
+    for (const raw of ["50%off.png", "a%2b.png"]) {
+      const response = await imagesOnPost(
+        makeContext(
+          request("/api/images", "POST", {
+            body: PNG_BYTES,
+            headers: { "Content-Type": "image/png", "X-File-Name": raw },
+          }),
+          makeEnv(bucket)
+        )
+      );
+      expect(response.status, raw).toBe(201);
+      expect(((await response.json()) as { name: string }).name, raw).toBe(raw);
+    }
+  });
+
   test("POST 校验：空文件 400 / 非 4xx 之外的类型 400 / 超 20MB 413", async () => {
     const bucket = new InMemoryBucket();
     const env = makeEnv(bucket);

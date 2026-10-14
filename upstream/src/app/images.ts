@@ -23,9 +23,12 @@ export async function listImages(): Promise<ImagesResponse> {
 }
 
 export async function uploadImage(file: File): Promise<HostedImage> {
+  // HTTP 头只能携带 ISO-8859-1 字符：中文名直接放进 X-File-Name 会让
+  // new Headers() 抛 "non ISO-8859-1 code point"（整个上传直接失败）。
+  // 这里对文件名做百分号编码（纯 ASCII，任何客户端都安全），服务端会解回来。
   const response = await authFetch("/api/images", {
     method: "POST",
-    headers: { "X-File-Name": file.name },
+    headers: { "X-File-Name": encodeURIComponent(file.name) },
     body: file,
   });
   if (!response.ok) {

@@ -10,7 +10,7 @@
 
 | 渠道 | 说明 |
 | --- | --- |
-| **安装包（推荐）** | 到 [Releases](https://github.com/lanshatop/davflare-fnos/releases/latest) 下载 `davflare-fnos-1.0.1.fpk`，在飞牛「应用中心 → 手动安装」中选择该文件 |
+| **安装包（推荐）** | 到 [Releases](https://github.com/lanshatop/davflare-fnos/releases/latest) 下载 `davflare-fnos-1.0.2.fpk`，在飞牛「应用中心 → 手动安装」中选择该文件 |
 | 源码自行构建 | 执行 `bash tools/build-fpk.sh`（需 `fnpack`），产物为 `davflare/davflare.fpk` |
 
 > **环境要求**：飞牛 fnOS `>= 1.1.3100`；依赖应用 `nodejs_v24`（应用中心会自动安装）；默认服务端口 `8087`。
@@ -213,12 +213,13 @@ Davflare 允许把数据目录指向用户已有的 NAS 目录（如 `/vol1/SSD`
 | 项 | 结果 |
 | --- | --- |
 | `runtime/test/r2-fs.test.mjs` | 35 用例全绿（R2 语义逐条对齐） |
-| `runtime/test/e2e.test.mjs` | 87 用例全绿（24 条上游路由 + 25 个 MCP 工具逐个核对 + 匿名 WebDAV 目录 6 项 + 任意主机站点访问 3 项 + 任意主机图床 1 项 + 品牌种子化 3 项） |
+| `runtime/test/e2e.test.mjs` | 88 用例全绿（24 条上游路由 + 25 个 MCP 工具逐个核对 + 匿名 WebDAV 目录 6 项 + 任意主机站点访问 3 项 + 任意主机图床 2 项（含中文文件名百分号编码）+ 品牌种子化 3 项） |
 | `runtime/test/limits.test.mjs` | 8 用例全绿（单次直传上限控制面、流式落盘、超限后连接不被污染） |
 | `runtime/test/branding.test.mjs` | 12 用例全绿（默认态、未登录 401、管理员 PUT/DELETE、API 密钥改品牌、favicon 覆盖与 TTL、分享落地页 / WebDAV 目录页注入品牌、内部目录不暴露、非法类型 415、超限 413） |
 | **合计（后端）** | **142 通过 / 0 失败** |
-| 前端 vitest 全量 | 1755 用例通过 / 0 失败（130 个测试文件；唯一失败项是「Chrome 扩展打包」用例，因本机缺 `zip` 命令，与改动无关） |
-| 前端类型检查 | `tsc --noEmit` 通过 |
+| 前端 vitest 全量 | 1662 用例通过 / 0 失败（128 个测试文件全过；日志中偶发的 `HTMLMediaElement Not implemented` 为 jsdom 环境噪音，不影响断言） |
+| 前端类型检查 | `tsc --noEmit` 通过（`npm run build` 内置） |
+| 图床中文名修复验证 | 前端：中文名编码后可构造 Headers、服务端可无损解回（新增 2 组单测）；服务端：编码名解回原名入库、字面 `%` 不误伤（新增 2 组单测）；e2e：`POST /api/images` 编码中文文件名 → 201 且原名入库 |
 | 前端相关单测 | `App.test.tsx` 4 项 + `LoginDialog.test.tsx` 4 项全绿（登录页改动无回归） |
 | 登录页真实渲染验证 | Chrome headless + CDP：未登录主界面/顶栏 `visibility=hidden`、遮罩不透明纸面底色（亮 `rgb(244,241,236)` / 暗 `rgb(23,19,16)`，opacity=1）、卡片描边生效；登录后主界面恢复、登录框消失 —— 8 项断言全过 |
 | 品牌真实渲染验证 | Chrome headless + CDP：标签页标题 = 自定义名、登录框 Logo 指向 `/api/branding/logo`、顶栏显示自定义名、favicon 换标 —— 5 项断言全过 |
@@ -230,7 +231,7 @@ Davflare 允许把数据目录指向用户已有的 NAS 目录（如 `/vol1/SSD`
 | 打包产物冒烟 | `/` 200 + `frame-ancestors *`（无 X-Frame-Options）；`/api/keys` Basic 签发；`/api/list` Basic→401、X-Api-Key→200；`mkdir` 201；`PROPFIND` 207；`/healthz` 200 |
 | 生命周期模拟（mock `TRIM_*`） | install → start → status(0/3) → 重复 start 幂等 → config 改端口自动重启（旧端口关、新端口开、密码/域名/天数留空保留）→ stop → uninstall keep/delete 两档 → 用户目录安全闸门 |
 | **真机实测（真实飞牛 NAS，局域网访问）** | 用真实账号逐项走查：WebDAV `MKCOL / PUT / GET / PROPFIND / COPY / MOVE / DELETE` 全通（含中文文件名、1 MiB 二进制逐字节一致、`Range` → 206、`If-None-Match` → 304）；`PUT` 300 MB → 201（5.6 s，无 100 MB / 2 GiB 上限）；`/api/keys` 签发密钥后 `/api/list`、`/api/upload`（multipart 与 raw，同名自动改名）全通；`/mcp` `initialize` + `tools/list` 通、无凭据 401；`/api/sites` 两种发布（`{slug,source}` 与 `dir` 三步 plan→copy→finish）均成功且**匿名可读**；分享（文件 + 带提取码目录）匿名可读；品牌 PUT / clearLogo 与 `/favicon.png` 全站换标生效后已还原 —— 本次由真机实测发现并修复了图床直链缺陷，验证数据已全部清理 |
-| `fnpack build` | 通过，`davflare.fpk` **541,204 字节**（gzip tar，内含 app.tgz）；包内已核对 `manifest` 为 `version = 1.0.1` 且 `distributor_url` 指向本适配版仓库、`server.cjs` 含品牌路由与任意主机站点逻辑、向导含品牌字段、前端主 chunk 含品牌调用 |
+| `fnpack build` | 通过，`davflare.fpk` **541,433 字节**（gzip tar，内含 app.tgz）；包内已核对 `manifest` 为 `version = 1.0.2` 且 `distributor_url` 指向本适配版仓库、`server.cjs` 含图床文件名解码与品牌路由、向导含品牌字段、前端主 chunk 为修复后的 `index-BhHMpAYg.js` |
 
 > ⚠️ fnpack 在 Windows 上打包时文件权限位为 666（无执行位）。这是官方打包工具在非 POSIX 系统上的固有行为，fnOS 侧通过 `bash cmd/main` 方式调用脚本，不影响安装与运行；如在真机上遇到问题，可在 `cmd/install_callback` 里自行补 `chmod +x`。
 

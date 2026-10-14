@@ -32,6 +32,19 @@ describe("images client", () => {
     expect(init.body).toBe(file);
   });
 
+  test("uploadImage 中文名做百分号编码，避免 Headers 的 ISO-8859-1 限制", async () => {
+    mockAuthFetch.mockOk({ id: "x", name: "截图.png" }, 201);
+    const file = new File([new Uint8Array([1])], "截图 2024🎉.png", { type: "image/png" });
+    await uploadImage(file);
+    const [, init] = mockAuthFetch.mock.calls[0];
+    const name = init.headers["X-File-Name"];
+    // 编码后必须是纯 ASCII（能通过 new Headers 校验），且服务端可无损解回原名
+    expect(() => new Headers(init.headers)).not.toThrow();
+    expect(/^[\x20-\x7e]*$/.test(name)).toBe(true);
+    expect(name).toBe(encodeURIComponent("截图 2024🎉.png"));
+    expect(decodeURIComponent(name)).toBe("截图 2024🎉.png");
+  });
+
   test("deleteImage DELETEs by id", async () => {
     mockAuthFetch.mockOk({ deleted: true });
     await deleteImage("ab".repeat(16));
