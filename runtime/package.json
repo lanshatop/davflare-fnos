@@ -1,6 +1,6 @@
 {
   "name": "davflare-fnos-runtime",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Davflare 的飞牛 fnOS 本地运行时：用文件系统实现 R2 桶 + 复刻 Cloudflare Pages Functions 运行时",
   "license": "MIT",

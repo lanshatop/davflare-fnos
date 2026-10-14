@@ -255,7 +255,7 @@ body {
   font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   font-size: 15px; line-height: 1.5;
 }
-.wrap { width: 100%; max-width: 960px; margin: 0 auto; padding: 28px 16px 48px; }
+.wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 28px 16px 48px; }
 .brand {
   margin: 0 2px 14px; font-weight: 700; font-size: 1.02rem;
   letter-spacing: -.02em; color: var(--brand);
@@ -299,7 +299,7 @@ h1 { font-size: 1.35rem; margin: 0 0 6px; letter-spacing: -.02em; }
   gap: 12px; padding: 20px;
 }
 .lightbox[hidden] { display: none; }
-.lightbox img { max-width: min(92vw, 960px); max-height: 78vh; border-radius: 12px; background: var(--paper); }
+.lightbox img { max-width: min(92vw, 1100px); max-height: 78vh; border-radius: 12px; background: var(--paper); }
 .lb-bar { display: flex; gap: 8px; align-items: center; }
 .lb-bar button {
   border: 0; background: var(--paper); color: var(--ink); border-radius: 999px;
@@ -322,7 +322,9 @@ h1 { font-size: 1.35rem; margin: 0 0 6px; letter-spacing: -.02em; }
 .files a.dl:hover { text-decoration: underline; }
 .note { color: var(--muted); font-size: .85rem; margin: 14px 2px 0; }
 @media (max-width: 600px) { .files td.time, .files th.time { display: none; } }
-.docs { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+/* 文档站：左目录 + 右文档卡。文档列封顶 880px（正文约 810px，接近 50 个中文字符），
+   宽屏下不会拉成长行，读起来不吃力；目录/列表页则由 .wrap 放宽到 1200px。 */
+.docs { display: grid; grid-template-columns: 240px minmax(0, 880px); gap: 20px; align-items: start; }
 .toc {
   position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto;
   background: var(--paper); border-radius: 16px; box-shadow: var(--shadow); padding: 12px 8px;
@@ -338,7 +340,7 @@ h1 { font-size: 1.35rem; margin: 0 0 6px; letter-spacing: -.02em; }
 }
 .toc li a:hover { background: var(--hover); color: var(--brand); }
 .toc li a[aria-current="page"] { background: var(--hover); color: var(--brand); font-weight: 600; }
-.doc { padding: 22px 24px 26px; min-width: 0; }
+.doc { padding: 24px 34px 30px; min-width: 0; }
 .md { overflow-wrap: break-word; }
 .md > :first-child { margin-top: 0; }
 .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { line-height: 1.3; margin: 1.4em 0 .5em; letter-spacing: -.01em; }
