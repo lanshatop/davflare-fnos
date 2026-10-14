@@ -1,0 +1,135 @@
+#!/bin/sh /etc/rc.common
+#
+# Davflare —— OpenWrt procd 服务脚本
+#
+# 运行时完全由环境变量驱动（DAVFLARE_* / WEBDAV_*），没有任何宿主路径是
+# 写死在程序里的，所以这里只负责：读 uci → 准备目录 → 交给 procd 拉起。
+#
+# 与飞牛 fnOS 版本的差异：那边用 nohup + pidfile + bash /dev/tcp 探活，
+# 这里改用 procd 统一托管（崩溃自动拉起、日志进 syslog、随开机启动）。
+#
+# 服务的 enable/start 由 OpenWrt 的 default_postinst() 依据包内文件清单
+# （/etc/init.d/davflare 那一行）自动完成，不需要在 postinst 里手写。
+
+START=99
+STOP=10
+USE_PROCD=1
+
+APP_DIR=/usr/lib/davflare
+SERVER_JS="$APP_DIR/server.cjs"
+WWW_DIR="$APP_DIR/www"
+
+davflare_find_node() {
+	local candidate
+	for candidate in /usr/bin/node /usr/local/bin/node; do
+		[ -x "$candidate" ] && {
+			printf '%s' "$candidate"
+			return 0
+		}
+	done
+	candidate="$(command -v node 2>/dev/null)"
+	if [ -n "$candidate" ]; then
+		printf '%s' "$candidate"
+		return 0
+	fi
+	return 1
+}
+
+start_service() {
+	local enabled port host data_dir state_dir meta_dir tmp_dir
+	local username password public_read public_dir public_dir_on
+	local allow_iframe log_req max_bytes brand_name sites_host trash_days
+
+	config_load davflare
+	config_get_bool enabled main enabled 1
+	[ "$enabled" -eq 1 ] || {
+		logger -t davflare "已通过 uci 停用（davflare.main.enabled=0），跳过启动"
+		return 0
+	}
+
+	config_get port main port 8087
+	config_get host main host '0.0.0.0'
+	config_get data_dir main data_dir '/srv/davflare/files'
+	config_get state_dir main state_dir '/srv/davflare'
+	config_get meta_dir main meta_dir ''
+	config_get tmp_dir main tmp_dir ''
+	config_get username main username 'admin'
+	config_get password main password ''
+	config_get_bool public_read main public_read 0
+	config_get public_dir main public_dir ''
+	config_get_bool public_dir_on main public_dir_on 1
+	config_get_bool allow_iframe main allow_iframe 0
+	config_get_bool log_req main log 0
+	config_get max_bytes main max_request_bytes 0
+	config_get node_options main node_options ''
+	config_get brand_name main brand_name ''
+	config_get sites_host main sites_host ''
+	config_get trash_days main trash_retention_days ''
+
+	[ -n "$meta_dir" ] || meta_dir="$state_dir/meta"
+	[ -n "$tmp_dir" ] || tmp_dir="$state_dir/tmp"
+
+	if [ ! -r "$SERVER_JS" ]; then
+		logger -t davflare "找不到服务端程序 $SERVER_JS，安装包不完整"
+		return 1
+	fi
+	if [ ! -d "$WWW_DIR" ]; then
+		logger -t davflare "找不到前端资源目录 $WWW_DIR，安装包不完整"
+		return 1
+	fi
+
+	local node
+	if ! node="$(davflare_find_node)"; then
+		logger -t davflare "未找到 Node.js 运行时，请先安装 node 包（见 README）"
+		return 1
+	fi
+
+	if [ -z "$password" ]; then
+		logger -t davflare "警告：WebDAV 密码为空，鉴权 fail-closed，所有受保护接口都会被拒绝。"
+		logger -t davflare "请在 LuCI「服务 → Davflare」或 uci set davflare.main.password 里设置。"
+	fi
+
+	# 数据与状态目录：外部存储通常是 /mnt/sdXX，默认落在 /srv（overlay），
+	# 首次启动时创建；正式使用建议把 data_dir 指到 U 盘/硬盘挂载点。
+	mkdir -p "$data_dir" "$meta_dir" "$tmp_dir" 2>/dev/null
+
+	procd_open_instance
+	# node_options 需要按空格拆词后逐个传给 node，所以这里刻意不加引号
+	# （与 OpenWrt 其它 init 脚本的惯例一致）。只填形如
+	# --max-old-space-size=128 的参数，别写带空格的路径。
+	# shellcheck disable=SC2086
+	procd_set_param command "$node" $node_options "$SERVER_JS"
+	procd_set_param env \
+		DAVFLARE_PORT="$port" \
+		DAVFLARE_HOST="$host" \
+		DAVFLARE_DATA_DIR="$data_dir" \
+		DAVFLARE_META_DIR="$meta_dir" \
+		DAVFLARE_TMP_DIR="$tmp_dir" \
+		DAVFLARE_BUILD_DIR="$WWW_DIR" \
+		DAVFLARE_LOG="$log_req" \
+		DAVFLARE_ALLOW_IFRAME="$allow_iframe" \
+		DAVFLARE_MAX_REQUEST_BYTES="$max_bytes" \
+		WEBDAV_USERNAME="$username" \
+		WEBDAV_PASSWORD="$password" \
+		WEBDAV_PUBLIC_READ="$public_read" \
+		WEBDAV_PUBLIC_DIR="$public_dir" \
+		WEBDAV_PUBLIC_DIR_ON="$public_dir_on" \
+		SITES_HOST="$sites_host" \
+		BRAND_NAME="$brand_name" \
+		TRASH_RETENTION_DAYS="$trash_days"
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+
+	logger -t davflare "启动：端口 $port，数据目录 $data_dir，运行时 $node"
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger davflare
+}

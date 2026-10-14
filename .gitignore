@@ -7,6 +7,8 @@
 node_modules/
 .pnp
 .pnp.js
+__pycache__/
+*.py[cod]
 
 # ── 构建产物（tools/build-fpk.sh 生成）───────────────────────
 upstream/build/
@@ -16,6 +18,9 @@ davflare/app/www/
 
 # fnOS 安装包：建议作为 GitHub Releases 附件分发，不入库
 davflare/davflare.fpk
+
+# OpenWrt 安装包（.ipk / .apk）与 SDK 源码包：同样作为 Releases 附件分发
+dist-openwrt/
 
 # ── 环境变量与凭据（绝不提交）───────────────────────────────
 .env

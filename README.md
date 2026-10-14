@@ -1,8 +1,8 @@
-# Davflare · 飞牛 fnOS 适配版
+# Davflare · 飞牛 fnOS / OpenWrt 适配版
 
-把 [Davflare](https://github.com/fanchenggang/Davflare)（Cloudflare R2 文件管理器 / 分享服务）完整搬到飞牛 fnOS 上本地运行：**程序跑在 NAS 上，数据也存在 NAS 上**，不再依赖 Cloudflare。
+把 [Davflare](https://github.com/fanchenggang/Davflare)（Cloudflare R2 文件管理器 / 分享服务）完整搬到本地运行：**程序跑在自己的设备上，数据也存在自己的设备上**，不再依赖 Cloudflare。
 
-**功能与上游零删减**，仅把平台耦合点做了替换。
+**功能与上游零删减**，仅把平台耦合点做了替换。同一份 `runtime/dist/server.cjs` 同时供两个平台使用，应用代码零改动。
 
 ---
 
@@ -10,13 +10,20 @@
 
 | 渠道 | 说明 |
 | --- | --- |
-| **安装包（推荐）** | 到 [Releases](https://github.com/lanshatop/davflare-fnos/releases/latest) 下载 `davflare-fnos-1.0.4.fpk`，在飞牛「应用中心 → 手动安装」中选择该文件 |
-| 源码自行构建 | 执行 `bash tools/build-fpk.sh`（需 `fnpack`），产物为 `davflare/davflare.fpk` |
+| **飞牛 fnOS（推荐）** | 到 [Releases](https://github.com/lanshatop/davflare-fnos/releases/latest) 下载 `davflare-fnos-1.0.4.fpk`，在飞牛「应用中心 → 手动安装」中选择该文件 |
+| **OpenWrt 24.10 及更早** | 下载 `davflare_1.0.4-r1_all.ipk`，`opkg install ./davflare_1.0.4-r1_all.ipk` |
+| **OpenWrt 25.12 及更新** | 下载 `davflare-1.0.4-r1.apk`，`apk add --allow-untrusted ./davflare-1.0.4-r1.apk` |
+| 源码自行构建（fnOS） | 执行 `bash tools/build-fpk.sh`（需 `fnpack`），产物为 `davflare/davflare.fpk` |
+| 源码自行构建（OpenWrt） | 执行 `python3 openwrt/tools/build-openwrt-packages.py`，无需 SDK |
 
-> **环境要求**：飞牛 fnOS `>= 1.1.3100`；依赖应用 `nodejs_v24`（应用中心会自动安装）；默认服务端口 `8087`。
+> **飞牛环境要求**：fnOS `>= 1.1.3100`；依赖应用 `nodejs_v24`（应用中心会自动安装）；默认服务端口 `8087`。
+>
+> **OpenWrt 环境要求**：Node.js `>= 20`（官方 feed 自 2025-03 起不再提供，需自建，
+> 详见 [openwrt/README.md](openwrt/README.md)）；建议 ≥ 256 MB 内存；
+> 需要 aarch64 / arm(vfp|neon) / x86_64 —— 无硬件 FPU 的 MIPS 与 bcm53xx 跑不了 V8。
 >
 > **覆盖安装**不影响数据目录中的网盘文件与品牌设置，可放心升级。
-> 安装失败时查看日志：`/var/apps/davflare/var/davflare.log`。
+> 安装失败时查看日志：飞牛 `/var/apps/davflare/var/davflare.log`，OpenWrt `logread -e davflare`。
 
 ---
 
@@ -141,6 +148,29 @@
    - 已用系统 Chrome + CDP 真实渲染验证 5 项断言全过（标题 = 自定义名、登录框 Logo 指向
      `/api/branding/logo`、顶栏显示自定义名、favicon 换标），截图见
      `davflare-branding-login.png` / `davflare-branding-header.png`，脚本 `tools/verify-branding.mjs` + `tools/run-branding-check.sh`
+
+### 同一套运行时如何复用到 OpenWrt
+
+运行时是**零宿主耦合**的：启动契约就是 `node server.cjs`，全部行为由环境变量驱动
+（`DAVFLARE_*` / `WEBDAV_*` / `SITES_HOST` / `BRAND_NAME` / `TRASH_RETENTION_DAYS`），
+没有硬编码路径、没有 `child_process`、不监听文件、不依赖 systemd —— 所以搬到
+OpenWrt **应用代码一行都不用改**，适配全部落在生命周期层：
+
+| 环节 | 飞牛 fnOS | OpenWrt |
+| --- | --- | --- |
+| 进程管理 | `nohup` + pidfile（`cmd/*`） | procd（`USE_PROCD=1`，崩溃自动拉起、日志进 syslog） |
+| 配置 | `TRIM_*` 环境变量 + 安装向导 | uci `/etc/config/davflare` |
+| 首次初始化 | 安装向导 | `/etc/uci-defaults/99-davflare`（执行后自动删除） |
+| 启停集成 | 飞牛应用框架 | `default_postinst()` 依包内文件清单自动 enable+start |
+| 打包 | `.fpk`（`fnpack`） | `.ipk`（opkg，≤24.10）+ `.apk`（apk-tools 3，≥25.12） |
+
+飞牛那套 `cmd/*` **不能直接搬**：它依赖 `TRIM_*` 环境变量、`bash` 的 `/dev/tcp`
+探活和 pidfile 约定，这些在 OpenWrt 上都不存在，因此整层被 procd + uci 替换。
+
+打包工具链在 `openwrt/`：`adb_pack.py`（apk v3 的 adb 格式读写校验）、
+`mk_ipk.py`（opkg 打包器）、`build-openwrt-packages.py`（一键产出两种包 + SDK 源码包），
+以及一套标准 OpenWrt package feed 形式的 `package/davflare/`（含 `Makefile`）。
+完整说明见 **[openwrt/README.md](openwrt/README.md)**。
 
 ---
 

@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# 首次安装的一次性初始化（OpenWrt 会在装包后自动执行并删除本文件）。
+#
+# 只做两件事：
+#   1. 生成一个随机 WebDAV 密码（仓库里不能带默认弱口令）
+#   2. 创建数据/状态目录
+# 其余选项都由 /etc/config/davflare 里的默认值提供，用户可随时改。
+
+. /lib/functions.sh
+
+[ -n "$(uci -q get davflare.main.password)" ] || {
+	# 取 12 位十六进制随机口令；busybox 没有 openssl 时退回 /dev/urandom
+	if command -v openssl >/dev/null 2>&1; then
+		pw="$(openssl rand -hex 6)"
+	else
+		pw="$(head -c 16 /dev/urandom | hexdump -v -e '/1 "%02x"' | cut -c1-12)"
+	fi
+	uci set davflare.main.password="$pw"
+	uci commit davflare
+	logger -t davflare "已生成随机 WebDAV 密码：$pw"
+	echo "davflare: 初始密码为 $pw（可用 uci get davflare.main.password 查看）"
+}
+
+config_load davflare
+config_get data_dir main data_dir '/srv/davflare/files'
+config_get state_dir main state_dir '/srv/davflare'
+config_get port main port '8087'
+mkdir -p "$data_dir" "$state_dir/meta" "$state_dir/tmp" 2>/dev/null
+
+# 这段输出会跟着 opkg/apk 的安装过程一起显示出来，方便装完就知道去哪儿开
+echo "davflare: 安装完成，服务即将启动。"
+echo "          网盘/图床/分享：http://<路由器地址>:${port}/"
+echo "          WebDAV：        http://<路由器地址>:${port}/webdav/"
+echo "          账号：          $(uci -q get davflare.main.username) / $(uci -q get davflare.main.password)"
+echo "          数据目录：      ${data_dir}（默认在 overlay 闪存上，建议改到外置挂载点）"
+
+exit 0
